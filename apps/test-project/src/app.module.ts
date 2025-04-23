@@ -2,9 +2,11 @@ import { Module, DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import configuration from '../config/configuration'
+import configuration from '../config/configuration';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { XueXiModule } from './xue-xi/xue-xi.module';
+import { UserModule } from './user/user.module';
+import { User } from '@/user/entities/user.entity';
 
 @Module({
   imports: [
@@ -30,9 +32,11 @@ import { XueXiModule } from './xue-xi/xue-xi.module';
         synchronize: config.get('db.synchronize'),
         logging: config.get('db.logging'),
         logger: config.get('db.logger'),
+        entities: [User],
       }),
     }),
     XueXiModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
