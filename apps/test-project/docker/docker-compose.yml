@@ -1,0 +1,43 @@
+# docker-compose.yml 配置解析
+version: '3.8'  # Docker Compose语法版本（3.x系列支持单节点部署）
+
+services:
+  db:  # MySQL数据库服务
+    image: mysql:8.0.31  # 官方镜像（默认latest标签，生产建议指定版本）
+    command: --default-authentication-plugin=mysql_native_password
+    # ↑ 强制使用旧版认证插件（兼容性配置，但存在安全隐患）
+    # 安全警告：此插件不支持SHA-256加密，建议仅用于测试环境
+    # 升级指南：https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html
+    restart: always  # 崩溃后自动重启（避免服务不可用）
+    environment:
+      MYSQL_ROOT_PASSWORD: example  # root超级用户密码（必须修改！）
+      # 生产环境应添加：MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD 等变量
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app_net
+
+  adminer:  # 轻量级数据库管理面板
+    image: adminer  # 官方镜像（支持MySQL/PostgreSQL等多种数据库）
+    restart: always  # 与db服务保持同步重启
+    ports:
+      - "8090:8080"  # 访问地址：http://localhost:8080
+      # 登录参数：
+      # 系统: MySQL
+      # 服务器: db（容器服务名）
+      # 用户名: root
+      # 密码: example
+      # 数据库: 留空
+    depends_on:
+      - db
+    networks:
+      - app_net
+
+volumes:
+  mysql_data:
+
+networks:
+    app_net:
+      driver: bridge

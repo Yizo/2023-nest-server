@@ -1,0 +1,12 @@
+db:
+  image: mysql:8.0.31
+  command: --default-authentication-plugin=mysql_native_password
+  restart: always
+  host: 127.0.0.1
+  password: dev_secret
+
+user:
+  image: mysql:8.0.31
+  command: --default-authentication-plugin=mysql_native_password
+  restart: always
+
