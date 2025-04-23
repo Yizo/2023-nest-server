@@ -1,0 +1,7 @@
+POST http://192.168.31.174:3000/user/login
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "123456"
+}
