@@ -1,5 +1,5 @@
 import { Module, DynamicModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from '../config/configuration'
@@ -14,19 +14,23 @@ import { XueXiModule } from './xue-xi/xue-xi.module';
       // 以env文件的方法
       // envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'development'}`],
     }) as DynamicModule,
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      autoLoadEntities: true,
-      migrationsRun: true,
-      host: 'localhost',
-      port: 3309,
-      username: 'app_user',
-      password: 'app_password',
-      database: 'dev',
-      timezone: '+08:00',
-      synchronize: true,
-      logging: true,
-      logger: 'advanced-console',
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: Record<string, any>) => ({
+        type: config.get('db.type'),
+        autoLoadEntities: config.get('db.autoLoadEntities'),
+        migrationsRun: config.get('db.migrationsRun'),
+        host: config.get('db.host'),
+        port: config.get('db.port'),
+        username: config.get('db.username'),
+        password: config.get('db.password'),
+        database: config.get('db.database'),
+        timezone: config.get('db.timezone'),
+        synchronize: config.get('db.synchronize'),
+        logging: config.get('db.logging'),
+        logger: config.get('db.logger'),
+      }),
     }),
     XueXiModule,
   ],

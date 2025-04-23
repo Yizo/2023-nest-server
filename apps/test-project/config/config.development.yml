@@ -1,8 +1,17 @@
 
 db:
-  image: mysql:8.0.32
-  command: --default-authentication-plugin=mysql_native_password
-  restart: always
+  type: mysql
+  autoLoadEntities: true
+  migrationsRun: true
+  host: localhost
+  port: 3309
+  username: app_user
+  password: app_password
+  database: dev
+  timezone: +08:00
+  synchronize: true
+  logging: true
+  logger: advanced-console
 
 user:
   image: mysql:8.0.32
