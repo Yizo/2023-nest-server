@@ -7,6 +7,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { XueXiModule } from './xue-xi/xue-xi.module';
 import { UserModule } from './user/user.module';
 import { User } from '@/user/entities/user.entity';
+import { Profile } from '@/user/entities/profile.entity';
+import { Logs } from '@/logs/logs.entity';
+import { Roles } from '@/roles/roles.entity';
 
 @Module({
   imports: [
@@ -32,7 +35,7 @@ import { User } from '@/user/entities/user.entity';
         synchronize: config.get('db.synchronize'),
         logging: config.get('db.logging'),
         logger: config.get('db.logger'),
-        entities: [User],
+        entities: [User, Profile, Logs, Roles],
       }),
     }),
     XueXiModule,
