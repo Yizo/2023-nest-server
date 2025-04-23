@@ -10,14 +10,21 @@ services:
     # 升级指南：https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html
     restart: always  # 崩溃后自动重启（避免服务不可用）
     environment:
+      MYSQL_DATABASE: dev
       MYSQL_ROOT_PASSWORD: example  # root超级用户密码（必须修改！）
-      # 生产环境应添加：MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD 等变量
+      MYSQL_USER: app_user     # 创建非 root 用户
+      MYSQL_PASSWORD: app_password     # 非 root 用户密码
     ports:
       - "3309:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
       - app_net
+    healthcheck: # 健康检查（可选）
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
 
   adminer:  # 轻量级数据库管理面板
     image: adminer  # 官方镜像（支持MySQL/PostgreSQL等多种数据库）

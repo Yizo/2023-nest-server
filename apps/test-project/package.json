@@ -19,7 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "docker:up": "docker-compose -f ./docker/docker-compose.yml up -d",
-    "docker:down": "docker-compose -f ./docker/docker-compose.yml down",
+    "docker:down": "docker-compose -f ./docker/docker-compose.yml down -v",
     "docker:logs": "docker-compose -f ./docker/docker-compose.yml logs -f",
     "docker:init": "npm run docker:build && npm run docker:up",
     "docker:build": "docker-compose -f ./docker/docker-compose.yml build",
