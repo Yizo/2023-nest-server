@@ -23,7 +23,8 @@ export class Profile {
 
   // 一对一关联关系, 注入实体User
   @OneToOne(() => User)
-  // 指定关联关系字段: 默认为[user + Id]
+  // 显式声明外键字段名
+  // 关联字段名 + 关联实体主键名 默认为[user + Id]
   @JoinColumn()
   user: User;
 }
