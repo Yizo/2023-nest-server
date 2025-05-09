@@ -25,6 +25,7 @@ export class User {
   logs: Logs[];
 
   @ManyToMany(() => Roles, (roles) => roles.users)
+  // 多对多关系，指定中间表名， 只需在主控方使用 @JoinTable
   @JoinTable({ name: 'users_roles' })
   roles: Roles[];
 }

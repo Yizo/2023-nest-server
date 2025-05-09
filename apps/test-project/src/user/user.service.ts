@@ -12,7 +12,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
   async create(createUserDto: CreateUserDto) {
-    const user = this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { username: createUserDto.username },
     });
     if (user) {
