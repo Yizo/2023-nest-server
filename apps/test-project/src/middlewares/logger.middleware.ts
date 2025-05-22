@@ -4,7 +4,9 @@ import { Request, Response, NextFunction } from 'express';
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-    console.log('前置中间件');
+    console.log(
+      '-----------------------------------全局中间件-----------------------------------',
+    );
     console.log(`Request method: ${req.method}`);
     console.log(`Request URL: ${req.url}`);
     console.log(`Request path: ${req.path}`);
@@ -19,6 +21,9 @@ export class LoggerMiddleware implements NestMiddleware {
     console.log(`Request original URL: ${req.originalUrl}`); // 完整带 query 的 URL路径
     console.log(`Request hostname: ${req.hostname}`); // Host头部解析出的主机名
     console.log(`Request subdomains:`, req.subdomains); // 子域名（如 ['a', 'b'] 对应 a.b.example.com）
+    console.log(
+      '-----------------------------------全局中间件-----------------------------------',
+    );
     next();
   }
 }
