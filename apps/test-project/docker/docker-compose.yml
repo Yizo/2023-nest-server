@@ -30,7 +30,7 @@ services:
     image: adminer  # 官方镜像（支持MySQL/PostgreSQL等多种数据库）
     restart: always  # 与db服务保持同步重启
     ports:
-      - "8090:8080"  # 访问地址：http://localhost:8080
+      - "8090:8080"  # 访问地址：http://localhost:8090
       # 登录参数：
       # 系统: MySQL
       # 服务器: db（容器服务名）

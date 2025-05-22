@@ -27,7 +27,12 @@ export class UserService {
   }
 
   findAll() {
-    return this.userRepository.find();
+    // return this.userRepository.find();
+    return {
+      code: 0,
+      data: [],
+      message: '',
+    };
   }
 
   findOne(id: number) {

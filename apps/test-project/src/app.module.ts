@@ -1,15 +1,12 @@
-import { Module, DynamicModule } from '@nestjs/common';
+import { Module, DynamicModule, NestModule, type MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from '../config/configuration';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { XueXiModule } from './xue-xi/xue-xi.module';
-import { UserModule } from './user/user.module';
-import { User } from '@/user/entities/user.entity';
-import { Profile } from '@/user/entities/profile.entity';
-import { Logs } from '@/logs/logs.entity';
-import { Roles } from '@/roles/roles.entity';
+import { XueXiModule } from '@/modules/xue-xi/xue-xi.module';
+import { UserModule } from '@/modules/user/user.module';
+import { LoggerMiddleware } from '@/middlewares/logger.middleware'
 
 @Module({
   imports: [
@@ -35,7 +32,9 @@ import { Roles } from '@/roles/roles.entity';
         synchronize: config.get('db.synchronize'),
         logging: config.get('db.logging'),
         logger: config.get('db.logger'),
-        entities: [User, Profile, Logs, Roles],
+        entities: [
+          __dirname + '/**/*.entity{.ts,.js}'
+        ]
       }),
     }),
     XueXiModule,
@@ -44,4 +43,11 @@ import { Roles } from '@/roles/roles.entity';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+    configure(consumer: MiddlewareConsumer) {
+        consumer.apply(LoggerMiddleware).forRoutes({
+            path: '*',
+            method: RequestMethod.ALL,
+        })
+    }
+}

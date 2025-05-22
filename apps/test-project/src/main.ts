@@ -5,7 +5,7 @@ import * as session from 'express-session';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const port = 9000 ||process.env.PORT || 0;
+  const port = 9000;
 
   // 启用cookie解析
   app.use(cookieParser());
