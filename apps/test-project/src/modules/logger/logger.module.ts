@@ -2,6 +2,7 @@ import { Module, Global, DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
+import { Logform } from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { join } from 'path';
 
@@ -16,10 +17,32 @@ export class LoggerModule {
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => {
             const logDir = join(process.cwd(), 'logs');
+
+            // 自定义时间戳格式器（北京时间）
+            const beijingTimeFormat = winston.format(
+              (info: Logform.TransformableInfo) => {
+                const date = info.timestamp
+                  ? new Date(info.timestamp as string)
+                  : new Date();
+                const beijingTime = date.toLocaleString('zh-CN', {
+                  timeZone: 'Asia/Shanghai', // 北京时间
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false,
+                });
+                info.timestamp = beijingTime;
+                return info;
+              },
+            );
+
             // 控制台日志
             const consoleFormat = winston.format.combine(
               winston.format.colorize({ all: true }),
-              winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+              beijingTimeFormat(),
               winston.format.align(),
               winston.format.printf(
                 ({ timestamp, level, message, ...args }) => {
@@ -33,7 +56,7 @@ export class LoggerModule {
             );
 
             const fileFormat = winston.format.combine(
-              winston.format.timestamp(),
+              beijingTimeFormat(),
               winston.format.json(),
             );
 
