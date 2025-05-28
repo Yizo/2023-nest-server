@@ -6,16 +6,13 @@ import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { join } from 'path';
 
 @Global()
-@Module({
-  imports: [ConfigModule],
-})
+@Module({})
 export class LoggerModule {
   static forRoot(): DynamicModule {
     return {
       module: LoggerModule,
       imports: [
         WinstonModule.forRootAsync({
-          imports: [ConfigModule], // 使用 ConfigModule 来加载环境变量
           inject: [ConfigService],
           useFactory: (configService: ConfigService) => {
             const logDir = join(process.cwd(), 'logs');
