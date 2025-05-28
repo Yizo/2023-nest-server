@@ -6,14 +6,22 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
+  Inject,
 } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CustomValidationPipe } from '@/pipes/validation.pipe';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {}
 
   @Post('/create')
   create(@Body() createUserDto: CreateUserDto) {
@@ -21,12 +29,17 @@ export class UserController {
   }
 
   @Get()
-  findAll() {
+  findAll(@Body(new CustomValidationPipe()) body: any) {
+    this.logger.log('Fetching all users', UserController.name);
+    this.logger.debug(
+      `Request body: ${JSON.stringify(body)}`,
+      UserController.name,
+    );
     return this.userService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseIntPipe) id: string) {
     return this.userService.findOne(+id);
   }
 

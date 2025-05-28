@@ -29,9 +29,12 @@
 		"js-yaml": "^4.1.0",
 		"lodash": "^4.17.21",
 		"mysql2": "^3.13.0",
+		"nest-winston": "^1.10.2",
 		"reflect-metadata": "^0.1.13",
 		"rxjs": "^7.2.0",
 		"typeorm": "^0.3.21",
+		"winston": "^3.17.0",
+		"winston-daily-rotate-file": "^5.0.0",
 		"x-crawl": "^10.0.2"
 	},
 	"devDependencies": {

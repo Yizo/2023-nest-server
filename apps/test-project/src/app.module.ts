@@ -1,20 +1,21 @@
 import { Module, DynamicModule, NestModule, type MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { LoggerModule } from '@/modules/logger/logger.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from '../config/configuration';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { XueXiModule } from '@/modules/xue-xi/xue-xi.module';
 import { UserModule } from '@/modules/user/user.module';
-import { LoggerMiddleware } from '@/middlewares/logger.middleware'
+import { LoggerMiddleware } from '@/modules/logger/logger.middleware'
 
 @Module({
   imports: [
+    // 配置全局 Winston 日志系统
+    LoggerModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
-      // 以env文件的方法
-      // envFilePath: ['.env', `.env.${process.env.NODE_ENV || 'development'}`],
     }) as DynamicModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

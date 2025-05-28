@@ -10,3 +10,6 @@ user:
   command: --default-authentication-plugin=mysql_native_password
   restart: always
 
+logger:
+  maxSize: 20m # 日志文件的最大大小
+  maxFiles: 14d # 日志文件的最大保留时间

@@ -1,4 +1,3 @@
-
 db:
   type: mysql
   autoLoadEntities: true
@@ -11,7 +10,7 @@ db:
   timezone: +08:00
   synchronize: true
   logging: true
-  logger: advanced-console
+  logger: file
 
 user:
   image: mysql:8.0.32
