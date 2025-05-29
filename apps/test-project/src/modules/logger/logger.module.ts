@@ -60,8 +60,8 @@ export class LoggerModule {
               winston.format.json(),
             );
 
-            const maxSize = configService.get<string>('maxSize');
-            const maxFiles = configService.get<string>('maxFiles');
+            const maxSize = configService.get<string>('logger.maxSize');
+            const maxFiles = configService.get<string>('logger.maxFiles');
 
             return {
               transports: [
