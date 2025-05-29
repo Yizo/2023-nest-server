@@ -41,11 +41,12 @@ export class LoggerModule {
 
             // 控制台日志
             const consoleFormat = winston.format.combine(
-              // winston.format.colorize({ all: true }),
-              // beijingTimeFormat(),
+              // winston.format.colorize(),
               winston.format.timestamp(),
               utilities.format.nestLike(),
               winston.format.align(),
+              winston.format.ms(),
+
               //   winston.format.printf(
               //     ({ timestamp, level, message, ...args }) => {
               //       return `${timestamp} [${level}]: ${message} ${
@@ -116,7 +117,6 @@ export class LoggerModule {
           },
         }),
       ],
-      exports: [WinstonModule],
     };
   }
 }
