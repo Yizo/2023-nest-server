@@ -29,7 +29,7 @@ export class UserController {
   }
 
   @Get()
-  findAll(@Body(new CustomValidationPipe()) body: any) {
+  findAll(@Body(CustomValidationPipe) body: any) {
     return this.userService.findAll();
   }
 

@@ -1,5 +1,5 @@
 import { Module, Global, DynamicModule } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { WinstonModule, utilities } from 'nest-winston';
 import * as winston from 'winston';
 import { Logform } from 'winston';
@@ -116,6 +116,7 @@ export class LoggerModule {
           },
         }),
       ],
+      exports: [WinstonModule],
     };
   }
 }
