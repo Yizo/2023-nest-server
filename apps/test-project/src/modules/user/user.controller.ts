@@ -30,11 +30,6 @@ export class UserController {
 
   @Get()
   findAll(@Body(new CustomValidationPipe()) body: any) {
-    this.logger.log('Fetching all users', UserController.name);
-    this.logger.debug(
-      `Request body: ${JSON.stringify(body)}`,
-      UserController.name,
-    );
     return this.userService.findAll();
   }
 

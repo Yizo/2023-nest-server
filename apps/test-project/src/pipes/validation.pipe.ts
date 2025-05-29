@@ -6,8 +6,16 @@ export class CustomValidationPipe
   extends ValidationPipe
   implements PipeTransform
 {
+  constructor() {
+    super();
+  }
+
   transform(value: any, metadata: ArgumentMetadata) {
-    console.log('CustomValidationPipe transform called', value, metadata);
+    // 使用 console.log 替代 logger
+    console.log('[CustomValidationPipe]', 'transform called:', {
+      value,
+      metadata,
+    });
     return value;
   }
 }

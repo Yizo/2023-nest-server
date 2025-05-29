@@ -1,6 +1,6 @@
 import { Module, Global, DynamicModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { WinstonModule } from 'nest-winston';
+import { WinstonModule, utilities } from 'nest-winston';
 import * as winston from 'winston';
 import { Logform } from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
@@ -41,18 +41,20 @@ export class LoggerModule {
 
             // 控制台日志
             const consoleFormat = winston.format.combine(
-              winston.format.colorize({ all: true }),
-              beijingTimeFormat(),
+              // winston.format.colorize({ all: true }),
+              // beijingTimeFormat(),
+              winston.format.timestamp(),
+              utilities.format.nestLike(),
               winston.format.align(),
-              winston.format.printf(
-                ({ timestamp, level, message, ...args }) => {
-                  return `${timestamp} [${level}]: ${message} ${
-                    Object.keys(args).length
-                      ? JSON.stringify(args, null, 2)
-                      : ''
-                  }`;
-                },
-              ),
+              //   winston.format.printf(
+              //     ({ timestamp, level, message, ...args }) => {
+              //       return `${timestamp} [${level}]: ${message} ${
+              //         Object.keys(args).length
+              //           ? JSON.stringify(args, null, 2)
+              //           : ''
+              //       }`;
+              //     },
+              //   ),
             );
 
             const fileFormat = winston.format.combine(

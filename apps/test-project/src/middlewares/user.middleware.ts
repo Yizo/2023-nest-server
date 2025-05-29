@@ -9,7 +9,7 @@ export class UserMiddleware implements NestMiddleware {
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
   use(req: Request, res: Response, next: NextFunction) {
-    this.logger.info('UserMiddleware: Processing request');
+    this.logger.info('用户模块中间件');
     next();
   }
 }
