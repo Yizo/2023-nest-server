@@ -1,8 +1,7 @@
-import { Module, DynamicModule, NestModule, type MiddlewareConsumer, RequestMethod, LoggerService } from '@nestjs/common';
+import { Module, DynamicModule, NestModule, type MiddlewareConsumer, RequestMethod, Logger, Global } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core'
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { LoggerModule } from '@/common/logger/logger.module';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { LoggerModule } from '@/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from '../config/configuration';
@@ -11,6 +10,7 @@ import { XueXiModule } from '@/modules/xue-xi/xue-xi.module';
 import { UserModule } from '@/modules/user/user.module';
 import { LoggerMiddleware, CustomExceptionFilter, ResponseInterceptor  } from '@/common'
 
+@Global()
 @Module({
   imports: [
     // 配置全局 Winston 日志系统
@@ -53,8 +53,10 @@ import { LoggerMiddleware, CustomExceptionFilter, ResponseInterceptor  } from '@
     {
         provide: APP_INTERCEPTOR,
         useClass: ResponseInterceptor,
-    }
+    },
+    Logger
   ],
+  exports: [Logger],
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {

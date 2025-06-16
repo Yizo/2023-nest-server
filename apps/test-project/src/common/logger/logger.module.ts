@@ -5,7 +5,6 @@ import * as winston from 'winston';
 import { Logform } from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { join } from 'path';
-import { LoggerService } from './logger.service';
 
 @Global()
 @Module({})
@@ -47,16 +46,6 @@ export class LoggerModule {
               utilities.format.nestLike(),
               winston.format.align(),
               winston.format.ms(),
-
-              //   winston.format.printf(
-              //     ({ timestamp, level, message, ...args }) => {
-              //       return `${timestamp} [${level}]: ${message} ${
-              //         Object.keys(args).length
-              //           ? JSON.stringify(args, null, 2)
-              //           : ''
-              //       }`;
-              //     },
-              //   ),
             );
 
             const fileFormat = winston.format.combine(
@@ -117,9 +106,7 @@ export class LoggerModule {
             };
           },
         }),
-      ],
-      providers: [LoggerService],
-      exports: [LoggerService],
+      ]
     };
   }
 }

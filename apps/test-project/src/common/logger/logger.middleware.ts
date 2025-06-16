@@ -1,10 +1,9 @@
-import { Injectable, NestMiddleware, Inject } from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { LoggerService } from '@/common';
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
-  constructor() {}
+  constructor(private readonly logger: Logger) {}
 
   use(req: Request, res: Response, next: NextFunction) {
     const requestInfo = {
@@ -22,7 +21,7 @@ export class LoggerMiddleware implements NestMiddleware {
       subdomains: req.subdomains,
     };
 
-    LoggerService.instance.info('全局中间件-HTTP请求信息', { requestInfo });
+    this.logger.log({ requestInfo }, '全局中间件-HTTP请求信息');
 
     next();
   }

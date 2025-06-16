@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { LoggerService } from '@/common';
+import { Logger } from '@nestjs/common';
 
 export interface ApiResponse<T> {
   code: number;
@@ -18,7 +18,7 @@ export interface ApiResponse<T> {
 export class ResponseInterceptor<T = Record<string, any>>
   implements NestInterceptor<T, ApiResponse<T>>
 {
-  constructor() {}
+  constructor(private readonly logger: Logger) {}
 
   intercept(
     context: ExecutionContext,
@@ -28,9 +28,7 @@ export class ResponseInterceptor<T = Record<string, any>>
       map((data) => {
         const response = context.switchToHttp().getResponse();
 
-        LoggerService.instance.info('全局响应拦截器', {
-          data,
-        });
+        this.logger.log({ data }, '全局响应拦截器');
 
         // 判断是否是我们定义的结构（包含 code 和 msg）
         if (data && typeof data === 'object' && 'code' in data) {

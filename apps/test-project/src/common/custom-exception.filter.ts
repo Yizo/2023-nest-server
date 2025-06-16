@@ -3,13 +3,12 @@ import {
   ArgumentsHost,
   HttpStatus,
   HttpException,
-  Inject,
+  Logger,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
-import { LoggerService } from '@/common';
 
 export class CustomExceptionFilter implements ExceptionFilter {
-  constructor() {}
+  constructor(private readonly logger: Logger) {}
   catch(exception: HttpException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -32,7 +31,7 @@ export class CustomExceptionFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    LoggerService.instance.error('全局过滤器捕获到错误', {
+    this.logger.error('全局过滤器捕获到错误', {
       message,
       stack: exception.stack,
       code: status,
