@@ -3,12 +3,10 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-  Inject,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { LoggerService } from '@/common';
 
 export interface ApiResponse<T> {
   code: number;
@@ -20,9 +18,7 @@ export interface ApiResponse<T> {
 export class ResponseInterceptor<T = Record<string, any>>
   implements NestInterceptor<T, ApiResponse<T>>
 {
-  constructor(
-    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-  ) {}
+  constructor() {}
 
   intercept(
     context: ExecutionContext,
@@ -32,7 +28,7 @@ export class ResponseInterceptor<T = Record<string, any>>
       map((data) => {
         const response = context.switchToHttp().getResponse();
 
-        this.logger.info('全局响应拦截器', {
+        LoggerService.instance.info('全局响应拦截器', {
           data,
         });
 

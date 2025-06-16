@@ -6,11 +6,10 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
-import { Logger } from 'winston';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { LoggerService } from '@/common';
 
 export class CustomExceptionFilter implements ExceptionFilter {
-  constructor(@Inject(WINSTON_MODULE_PROVIDER) private logger: Logger) {}
+  constructor() {}
   catch(exception: HttpException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -32,7 +31,8 @@ export class CustomExceptionFilter implements ExceptionFilter {
     } else if (exception instanceof Error) {
       message = exception.message;
     }
-    this.logger.error('全局过滤器捕获到错误', {
+
+    LoggerService.instance.error('全局过滤器捕获到错误', {
       message,
       stack: exception.stack,
       code: status,

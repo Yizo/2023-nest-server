@@ -7,10 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
-  Inject,
 } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -18,10 +15,7 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
 
 @Controller('user')
 export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   @Post('/create')
   create(@Body() createUserDto: CreateUserDto) {

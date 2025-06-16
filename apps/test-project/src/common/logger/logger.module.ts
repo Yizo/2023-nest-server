@@ -5,6 +5,7 @@ import * as winston from 'winston';
 import { Logform } from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { join } from 'path';
+import { LoggerService } from './logger.service';
 
 @Global()
 @Module({})
@@ -117,6 +118,8 @@ export class LoggerModule {
           },
         }),
       ],
+      providers: [LoggerService],
+      exports: [LoggerService],
     };
   }
 }
