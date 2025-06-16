@@ -13,7 +13,10 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CustomValidationPipe } from '@/pipes/validation.pipe';
 
-@Controller('user')
+@Controller({
+  version: '1',
+  path: 'user',
+})
 export class UserController {
   constructor(private readonly userService: UserService) {}
 

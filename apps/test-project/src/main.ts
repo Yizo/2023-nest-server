@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
 import * as session from 'express-session';
+import { VersioningType } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,6 +24,11 @@ async function bootstrap() {
       },
     }),
   );
+
+  // 启用基于 URI 的版本控制
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
 
   await app.listen(port);
 
