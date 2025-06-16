@@ -1,5 +1,5 @@
 import { Module, DynamicModule, NestModule, type MiddlewareConsumer, RequestMethod, LoggerService } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core'
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core'
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from '@/common/logger/logger.module';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -9,8 +9,7 @@ import configuration from '../config/configuration';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { XueXiModule } from '@/modules/xue-xi/xue-xi.module';
 import { UserModule } from '@/modules/user/user.module';
-import { LoggerMiddleware } from '@/common/logger/logger.middleware'
-import { CustomExceptionFilter } from '@/filters/custom-exception.filter';
+import { LoggerMiddleware, CustomExceptionFilter, ResponseInterceptor  } from '@/common'
 
 @Module({
   imports: [
@@ -51,6 +50,10 @@ import { CustomExceptionFilter } from '@/filters/custom-exception.filter';
       provide: APP_FILTER,
       useClass: CustomExceptionFilter,
     },
+    {
+        provide: APP_INTERCEPTOR,
+        useClass: ResponseInterceptor,
+    }
   ],
 })
 export class AppModule implements NestModule {

@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,6 +12,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
   async create(createUserDto: CreateUserDto) {
     const user = await this.userRepository.findOne({
@@ -27,16 +30,15 @@ export class UserService {
   }
 
   findAll() {
-    // return this.userRepository.find();
-    return {
-      code: 0,
-      data: [],
-      message: '',
-    };
+    return this.userRepository.find();
   }
 
-  findOne(id: number) {
-    return this.userRepository.findOne({ where: { id } });
+  async findOne(id: number) {
+    const data = await this.userRepository.findOne({ where: { id } });
+    if (data) {
+      return data;
+    }
+    return null;
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
