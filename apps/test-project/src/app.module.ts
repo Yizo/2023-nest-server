@@ -46,10 +46,10 @@ import { LoggerMiddleware, CustomExceptionFilter, ResponseInterceptor  } from '@
   controllers: [AppController],
   providers: [
     AppService,
-    {
-      provide: APP_FILTER,
-      useClass: CustomExceptionFilter,
-    },
+    // {
+    //   provide: APP_FILTER,
+    //   useClass: CustomExceptionFilter,
+    // },
     {
         provide: APP_INTERCEPTOR,
         useClass: ResponseInterceptor,

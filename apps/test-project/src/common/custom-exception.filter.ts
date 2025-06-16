@@ -31,23 +31,26 @@ export class CustomExceptionFilter implements ExceptionFilter {
       message = exception.message;
     }
 
-    this.logger.error('全局过滤器捕获到错误', {
-      message,
-      stack: exception.stack,
-      code: status,
-      method: request.method,
-      path: request.url,
-      url: request.url,
-      headers: request.headers,
-      query: request.query,
-      params: request.params,
-      body: request.body,
-      ip: request.ip,
-      protocol: request.protocol,
-      originalUrl: request.originalUrl,
-      hostname: request.hostname,
-      subdomains: request.subdomains,
-    });
+    this.logger.error(
+      {
+        message,
+        code: status,
+        method: request.method,
+        path: request.url,
+        url: request.url,
+        headers: request.headers,
+        query: request.query,
+        params: request.params,
+        body: request.body,
+        ip: request.ip,
+        protocol: request.protocol,
+        originalUrl: request.originalUrl,
+        hostname: request.hostname,
+        subdomains: request.subdomains,
+      },
+      exception.stack,
+      '全局过滤器',
+    );
 
     response.status(status).json({
       code: status,
