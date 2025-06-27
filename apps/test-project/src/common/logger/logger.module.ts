@@ -54,10 +54,13 @@ export class LoggerModule {
               winston.format.json(),
             );
 
-            const maxSize = configService.get<string>(LoggerConfigKey.MAX_SIZE);
-            const maxFiles = configService.get<string>(
-              LoggerConfigKey.MAX_FILES,
-            );
+            const maxSize =
+              configService.get<string>(`logger.${LoggerConfigKey.MAX_SIZE}`) ||
+              '20m';
+            const maxFiles =
+              configService.get<string>(
+                `logger.${LoggerConfigKey.MAX_FILES}`,
+              ) || '14d';
 
             return {
               transports: [
