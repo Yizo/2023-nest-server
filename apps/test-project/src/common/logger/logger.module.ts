@@ -5,6 +5,7 @@ import * as winston from 'winston';
 import { Logform } from 'winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { join } from 'path';
+import { LoggerConfigKey } from '@/enums';
 
 @Global()
 @Module({})
@@ -53,8 +54,10 @@ export class LoggerModule {
               winston.format.json(),
             );
 
-            const maxSize = configService.get<string>('logger.maxSize');
-            const maxFiles = configService.get<string>('logger.maxFiles');
+            const maxSize = configService.get<string>(LoggerConfigKey.MAX_SIZE);
+            const maxFiles = configService.get<string>(
+              LoggerConfigKey.MAX_FILES,
+            );
 
             return {
               transports: [
@@ -106,7 +109,7 @@ export class LoggerModule {
             };
           },
         }),
-      ]
+      ],
     };
   }
 }

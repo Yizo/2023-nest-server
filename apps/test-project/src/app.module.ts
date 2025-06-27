@@ -1,5 +1,5 @@
 import { Module, DynamicModule, NestModule, type MiddlewareConsumer, RequestMethod, Logger, Global } from '@nestjs/common';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core'
+import { APP_INTERCEPTOR } from '@nestjs/core'
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from '@/common';
 import { AppController } from './app.controller';
@@ -8,7 +8,8 @@ import configuration from '../config/configuration';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { XueXiModule } from '@/modules/xue-xi/xue-xi.module';
 import { UserModule } from '@/modules/user/user.module';
-import { LoggerMiddleware, CustomExceptionFilter, ResponseInterceptor  } from '@/common'
+import { LoggerMiddleware, ResponseInterceptor  } from '@/common'
+import { DbConfigKey } from '@/enums'
 
 @Global()
 @Module({
@@ -23,18 +24,18 @@ import { LoggerMiddleware, CustomExceptionFilter, ResponseInterceptor  } from '@
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: Record<string, any>) => ({
-        type: config.get('db.type'),
-        autoLoadEntities: config.get('db.autoLoadEntities'),
-        migrationsRun: config.get('db.migrationsRun'),
-        host: config.get('db.host'),
-        port: config.get('db.port'),
-        username: config.get('db.username'),
-        password: config.get('db.password'),
-        database: config.get('db.database'),
-        timezone: config.get('db.timezone'),
-        synchronize: config.get('db.synchronize'),
-        logging: config.get('db.logging'),
-        logger: config.get('db.logger'),
+        type: config.get(DbConfigKey.TYPE),
+        autoLoadEntities: config.get(DbConfigKey.AUTO_LOAD_ENTITIES),
+        migrationsRun: config.get(DbConfigKey.MIGRATIONS_RUN),
+        host: config.get(DbConfigKey.HOST),
+        port: config.get(DbConfigKey.PORT),
+        username: config.get(DbConfigKey.USERNAME),
+        password: config.get(DbConfigKey.PASSWORD),
+        database: config.get(DbConfigKey.DATABASE),
+        timezone: config.get(DbConfigKey.TIMEZONE),
+        synchronize: config.get(DbConfigKey.SYNCHRONIZE),
+        logging: config.get(DbConfigKey.LOGGING),
+        logger: config.get(DbConfigKey.LOGGER),
         entities: [
           __dirname + '/**/*.entity{.ts,.js}'
         ]
@@ -46,10 +47,6 @@ import { LoggerMiddleware, CustomExceptionFilter, ResponseInterceptor  } from '@
   controllers: [AppController],
   providers: [
     AppService,
-    // {
-    //   provide: APP_FILTER,
-    //   useClass: CustomExceptionFilter,
-    // },
     {
         provide: APP_INTERCEPTOR,
         useClass: ResponseInterceptor,
@@ -64,5 +61,6 @@ export class AppModule implements NestModule {
             path: '*',
             method: RequestMethod.ALL,
         })
+
     }
 }
