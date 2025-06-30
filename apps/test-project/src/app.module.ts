@@ -1,5 +1,13 @@
-import { Module, DynamicModule, NestModule, type MiddlewareConsumer, RequestMethod, Logger, Global } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core'
+import {
+  Module,
+  DynamicModule,
+  NestModule,
+  RequestMethod,
+  Logger,
+  Global,
+} from '@nestjs/common';
+import type { MiddlewareConsumer } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from '@/common';
 import { AppController } from './app.controller';
@@ -8,8 +16,9 @@ import configuration from '../config/configuration';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { XueXiModule } from '@/modules/xue-xi/xue-xi.module';
 import { UserModule } from '@/modules/user/user.module';
-import { LoggerMiddleware, ResponseInterceptor  } from '@/common'
-import { DbConfigKey } from '@/enums'
+import { LoggerMiddleware, ResponseInterceptor } from '@/common';
+import { DbConfigKey } from '@/enums';
+import { ProfileModule } from './modules/profile/profile.module';
 
 @Global()
 @Module({
@@ -36,31 +45,29 @@ import { DbConfigKey } from '@/enums'
         synchronize: config.get(`db.${DbConfigKey.SYNCHRONIZE}`),
         logging: config.get(`db.${DbConfigKey.LOGGING}`),
         logger: config.get(`db.${DbConfigKey.LOGGER}`),
-        entities: [
-          __dirname + '/**/*.entity{.ts,.js}'
-        ]
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
       }),
     }),
     XueXiModule,
     UserModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
     {
-        provide: APP_INTERCEPTOR,
-        useClass: ResponseInterceptor,
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseInterceptor,
     },
-    Logger
+    Logger,
   ],
   exports: [Logger],
 })
 export class AppModule implements NestModule {
-    configure(consumer: MiddlewareConsumer) {
-        consumer.apply(LoggerMiddleware).forRoutes({
-            path: '*',
-            method: RequestMethod.ALL,
-        })
-
-    }
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes({
+      path: '*',
+      method: RequestMethod.ALL,
+    });
+  }
 }

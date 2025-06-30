@@ -4,6 +4,8 @@ db:
   restart: always
   host: 127.0.0.1
   password: dev_secret
+  SYNCHRONIZE: true,
+  LOGGING: true
 
 user:
   image: mysql:8.0.31
