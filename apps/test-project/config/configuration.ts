@@ -6,6 +6,7 @@ import { merge } from 'lodash';
 export default () => {
   const configDir = join(__dirname, '../../config');
   const env = process.env.NODE_ENV || 'development';
+  console.log(`当前环境: ${env}`);
 
   try {
     // 加载默认配置

@@ -2,11 +2,11 @@ db:
   type: mysql
   autoLoadEntities: true
   migrationsRun: true
-  host: localhost
-  port: 3309
-  username: app_user
-  password: app_password
-  database: dev
+  host: 39.96.165.134
+  port: 13306
+  username: root
+  password: 8Kytb8EzbAFrbtyC
+  database: nest
   timezone: +08:00
   synchronize: true
   logging: true

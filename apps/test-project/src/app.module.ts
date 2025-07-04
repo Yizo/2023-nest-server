@@ -19,6 +19,7 @@ import { UserModule } from '@/modules/user/user.module';
 import { LoggerMiddleware, ResponseInterceptor } from '@/common';
 import { DbConfigKey } from '@/enums';
 import { ProfileModule } from './modules/profile/profile.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Global()
 @Module({
@@ -51,6 +52,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     XueXiModule,
     UserModule,
     ProfileModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
