@@ -1,9 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { FindAllBodyDto } from './dto/user-dto';
 
 @Injectable()
 export class UserService {
@@ -12,14 +11,14 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     private readonly logger: Logger,
   ) {}
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: any) {
     const user = await this.userRepository.findOne({
       where: { username: createUserDto.username },
     });
     if (user) {
       return {
         code: 1,
-        msg: '用户名已存在',
+        message: '用户名已存在',
       };
     } else {
       const newUser = this.userRepository.create(createUserDto);
@@ -27,8 +26,39 @@ export class UserService {
     }
   }
 
-  findAll() {
-    return this.userRepository.find();
+  async findAll(body: FindAllBodyDto) {
+    const { page = 1, pageSize = 10, sort = 'ASC', gender, role } = body;
+    const query = this.userRepository.createQueryBuilder('user');
+    if (gender) {
+      query.andWhere('user.gender = :gender', { gender });
+    }
+    if (role) {
+      query.andWhere('user.role = :role', { role });
+    }
+    if (sort) {
+      query.orderBy('user.id', sort === 'ASC' ? 'ASC' : 'DESC');
+    }
+
+    try {
+      const [data, total] = await query
+        .skip((page - 1) * pageSize)
+        .take(pageSize)
+        .getManyAndCount();
+      return {
+        message: '查询成功',
+        data,
+        total,
+        page,
+        pageSize,
+      };
+    } catch (error) {
+      this.logger.error('查询用户失败', error);
+      return {
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || '查询用户失败',
+        data: [],
+      };
+    }
   }
 
   async findOne(id: number) {
@@ -69,7 +99,7 @@ export class UserService {
     return null;
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async update(id: number, updateUserDto: any) {
     return this.userRepository.update(id, updateUserDto);
   }
 

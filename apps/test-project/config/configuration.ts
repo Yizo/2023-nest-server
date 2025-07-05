@@ -20,7 +20,9 @@ export default () => {
       envConfig = yaml.load(readFileSync(envConfigPath, 'utf8')) || {};
     }
     // 深合并配置
-    return merge(defaultConfig, envConfig);
+    const mergedConfig = merge(defaultConfig, envConfig);
+    console.log('合并后的配置:', mergedConfig);
+    return mergedConfig;
   } catch (error) {
     throw new Error(`配置加载失败: ${error.message}`);
   }

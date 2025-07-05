@@ -9,9 +9,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { CustomValidationPipe } from '@/pipes/validation.pipe';
+import { FindAllBodyDto, FindAllBodyDtoPipe } from './dto/user-dto';
 
 @Controller({
   version: '1',
@@ -21,22 +19,24 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post('/create')
-  create(@Body() createUserDto: CreateUserDto) {
+  create(@Body() createUserDto: any) {
     return this.userService.create(createUserDto);
   }
 
-  @Get()
-  findAll(@Body(CustomValidationPipe) body: any) {
-    return this.userService.findAll();
+  @Post('/findAll')
+  findAll(@Body(new FindAllBodyDtoPipe()) body: FindAllBodyDto) {
+    console.log('user findAll body', body);
+    return this.userService.findAll(body);
   }
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: string) {
+    console.log('id', id);
     return this.userService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(@Param('id') id: string, @Body() updateUserDto: any) {
     return this.userService.update(+id, updateUserDto);
   }
 

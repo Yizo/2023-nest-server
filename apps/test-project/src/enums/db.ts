@@ -12,3 +12,8 @@ export enum DbConfigKey {
   LOGGING = 'logging',
   LOGGER = 'logger',
 }
+
+export enum SortOrder {
+  ASC = 'ASC',
+  DESC = 'DESC',
+}

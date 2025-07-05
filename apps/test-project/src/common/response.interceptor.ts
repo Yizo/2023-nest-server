@@ -10,8 +10,11 @@ import { Logger } from '@nestjs/common';
 
 export interface ApiResponse<T> {
   code: number;
-  msg: string;
+  message: string;
   data: T;
+  total?: number | null;
+  page?: number | null;
+  pageSize?: number | null;
 }
 
 @Injectable()
@@ -30,19 +33,52 @@ export class ResponseInterceptor<T = Record<string, any>>
 
         this.logger.log({ data }, '全局响应拦截器');
 
-        // 判断是否是我们定义的结构（包含 code 和 msg）
-        if (data && typeof data === 'object' && 'code' in data) {
-          const statusCode = data.code === 0 ? data.code : 0;
-          response.status(statusCode);
+        // 针对字符串、数字、Buffer、Stream等非对象类型特殊处理
+        if (typeof data === 'string' || typeof data === 'number') {
+          return {
+            code: 0,
+            data,
+            message: '成功',
+          };
+        }
+        if (Buffer.isBuffer(data)) {
+          return data;
+        }
+        // 处理流（如文件下载等）
+        if (data && typeof data.pipe === 'function') {
+          // 直接返回原始流，不包装
           return data;
         }
 
-        // 普通成功响应包装
-        return {
+        const {
+          msg = '',
+          message = '',
+          total = null,
+          page = null,
+          pageSize = null,
+          ...rest
+        } = data || {};
+
+        const newData = rest && typeof rest === 'object' ? rest : {};
+        const result: ApiResponse<any> = {
           code: 0,
-          msg: '成功',
-          data,
+          data: null,
+          message: msg || message || '成功',
         };
+
+        if (total != null) result.total = total;
+        if (page != null) result.page = page;
+        if (pageSize != null) result.pageSize = pageSize;
+
+        if ('data' in newData) {
+          const { data, ...other } = newData;
+          result.data = data;
+          Object.assign(result, other);
+        } else {
+          result.data = Object.keys(newData).length ? { ...newData } : null;
+        }
+
+        return result;
       }),
     );
   }
