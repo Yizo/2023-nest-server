@@ -6,7 +6,7 @@ import {
   Min,
   IsOptional,
 } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
+import { plainToInstance, Type } from 'class-transformer';
 import { SortOrder } from '@/enums';
 import {
   ArgumentMetadata,
@@ -17,19 +17,24 @@ import {
 } from '@nestjs/common';
 
 export class FindAllBodyDto {
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
   page: number;
+
+  @Type(() => Number)
   @IsInt()
   @IsOptional()
   pageSize: number;
+
   @IsEnum(SortOrder)
   @IsOptional()
   sort: SortOrder;
   @IsString()
   @IsOptional()
   gender: string;
+
   @IsInt()
   @IsOptional()
   role: number;
