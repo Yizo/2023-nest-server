@@ -28,6 +28,7 @@ export class UserController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: string) {
     console.log('id', id);
+    this.logger.log(id, 'users:Controller:findOne:id');
     return this.userService.findOne(+id);
   }
 
@@ -37,8 +38,8 @@ export class UserController {
     @Query(new FindAllBodyDtoPipe()) body: FindAllBodyDto,
     @Headers() headers: Record<string, string>,
   ) {
-    this.logger.log(headers, '查询所有用户:headers');
-    this.logger.log(body, '查询所有用户:query');
+    this.logger.log(headers, 'users:Controller:findAll:headers');
+    this.logger.log(body, 'users:Controller:findAll:query');
     return this.userService.findAll(body);
   }
 

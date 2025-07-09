@@ -28,7 +28,19 @@ export class UserService {
 
   async findAll(body: FindAllBodyDto) {
     const { page = 1, pageSize = 10, sort = 'ASC', gender, role } = body;
-    const query = this.userRepository.createQueryBuilder('user');
+    const query = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.profile', 'profile')
+      .select([
+        'user.id',
+        'user.username',
+        'user.password',
+        'profile.id',
+        'profile.gender',
+        'profile.photo',
+        'profile.address',
+      ]);
+
     if (gender) {
       query.andWhere('user.gender = :gender', { gender });
     }
@@ -44,15 +56,31 @@ export class UserService {
         .skip((page - 1) * pageSize)
         .take(pageSize)
         .getManyAndCount();
+
+      // 对查出来的数据进行重命名处理
+      const result = data.map((item) => {
+        if (item.profile) {
+          const { profile, ...user } = item;
+          return {
+            ...user,
+            profileId: profile.id,
+            sex: profile.gender,
+            avatar: profile.photo,
+            location: profile.address,
+          };
+        }
+        return item;
+      });
+
       return {
         message: '查询成功',
-        data,
+        data: result,
         total,
         page,
         pageSize,
       };
     } catch (error) {
-      this.logger.error('查询用户失败', error);
+      this.logger.error(error, 'users:Service:findAll:catch');
       return {
         code: HttpStatus.INTERNAL_SERVER_ERROR,
         message: error.message || '查询用户失败',
