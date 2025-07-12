@@ -5,6 +5,7 @@ import {
   validate,
   Min,
   IsOptional,
+  ValidateNested,
 } from 'class-validator';
 import { plainToInstance, Type } from 'class-transformer';
 import { SortOrder } from '@/enums';
@@ -40,13 +41,42 @@ export class FindAllBodyDto {
   role: number;
 }
 
+class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @IsString()
+  photo?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+}
+
+export class UpdateUserDto {
+  @IsString()
+  @IsOptional()
+  username: string;
+
+  @IsString()
+  @IsOptional()
+  password: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateProfileDto)
+  profile: UpdateProfileDto;
+}
+
 @Injectable()
-export class FindAllBodyDtoPipe implements PipeTransform {
-  async transform(value: any, metadata: ArgumentMetadata) {
+export class DtoPipe implements PipeTransform {
+  async transform(value: unknown, metadata: ArgumentMetadata) {
     if (!metadata.metatype) {
       return value;
     }
-    console.log('FindAllBodyDtoPipe transform', value, metadata);
+    console.log('DtoPipe transform', value, metadata);
     const dto = plainToInstance(metadata.metatype, value);
     const errors = await validate(dto);
     if (errors.length > 0) {
@@ -55,7 +85,7 @@ export class FindAllBodyDtoPipe implements PipeTransform {
       const errorMessage = constraints
         ? Object.values(constraints)[0]
         : '参数校验失败';
-      console.log('FindAllBodyDtoPipe errorMessage', errorMessage);
+      console.log('DtoPipe errorMessage', errorMessage);
       throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
     }
     return value;

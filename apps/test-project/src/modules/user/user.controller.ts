@@ -12,7 +12,7 @@ import {
   Headers,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { FindAllBodyDto, FindAllBodyDtoPipe } from './dto/user-dto';
+import { FindAllBodyDto, DtoPipe, UpdateUserDto } from './dto/user-dto';
 
 @Controller({
   version: '1',
@@ -35,7 +35,7 @@ export class UserController {
   // 查询所有用户
   @Get()
   findAll(
-    @Query(new FindAllBodyDtoPipe()) body: FindAllBodyDto,
+    @Query(new DtoPipe()) body: FindAllBodyDto,
     @Headers() headers: Record<string, string>,
   ) {
     this.logger.log(headers, 'users:Controller:findAll:headers');
@@ -51,7 +51,10 @@ export class UserController {
 
   // 更新用户
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: any) {
+  update(
+    @Param('id') id: string,
+    @Body(new DtoPipe()) updateUserDto: UpdateUserDto,
+  ) {
     return this.userService.update(+id, updateUserDto);
   }
 

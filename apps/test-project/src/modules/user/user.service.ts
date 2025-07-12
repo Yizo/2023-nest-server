@@ -2,18 +2,25 @@ import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { FindAllBodyDto } from './dto/user-dto';
+import { Profile } from '../profile/entities/profile.entity';
+import { FindAllBodyDto, UpdateUserDto } from './dto/user-dto';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Profile)
+    private readonly profileRepository: Repository<Profile>,
     private readonly logger: Logger,
   ) {}
   async create(createUserDto: any) {
     const newUser = this.userRepository.create(createUserDto);
-    return this.userRepository.save(newUser);
+    await this.userRepository.save(newUser);
+    return {
+      code: 0,
+      message: '新增成功',
+    };
   }
 
   async findAll(body: FindAllBodyDto) {
@@ -53,10 +60,7 @@ export class UserService {
           const { profile, ...user } = item;
           return {
             ...user,
-            profileId: profile.id,
-            sex: profile.gender,
-            avatar: profile.photo,
-            location: profile.address,
+            profile,
           };
         }
         return item;
@@ -104,21 +108,42 @@ export class UserService {
       // 将profile字段展开并重命名，返回你想要的结构
       return {
         ...user,
-        profileId: profile.id,
-        sex: profile.gender,
-        avatar: profile.photo,
-        location: profile.address,
+        profile,
       };
     }
     if (data) {
       const { profile, ...user } = data;
-      return { ...user };
+      return { ...user, profile };
     }
     return null;
   }
 
-  async update(id: number, updateUserDto: any) {
-    return this.userRepository.update(id, updateUserDto);
+  async update(id: number, updateUserDto: UpdateUserDto) {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['profile'],
+    });
+    if (!user) {
+      return {
+        code: HttpStatus.NOT_FOUND,
+        message: '用户不存在',
+      };
+    }
+
+    // 使用 merge 合并主表字段
+    this.userRepository.merge(user, updateUserDto);
+
+    // 合并 profile（要注意先保证 profile 存在）
+    if (updateUserDto.profile) {
+      await this.profileRepository.save(user.profile);
+    }
+
+    await this.userRepository.save(user); // 级联保存
+
+    return {
+      code: 0,
+      message: '更新成功',
+    };
   }
 
   async remove(id: number) {
@@ -132,6 +157,7 @@ export class UserService {
     await this.userRepository.remove(user);
     return {
       code: 0,
+      message: '删除成功',
     };
   }
 }
