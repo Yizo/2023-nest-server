@@ -12,18 +12,8 @@ export class UserService {
     private readonly logger: Logger,
   ) {}
   async create(createUserDto: any) {
-    const user = await this.userRepository.findOne({
-      where: { username: createUserDto.username },
-    });
-    if (user) {
-      return {
-        code: 1,
-        message: '用户名已存在',
-      };
-    } else {
-      const newUser = this.userRepository.create(createUserDto);
-      return this.userRepository.save(newUser);
-    }
+    const newUser = this.userRepository.create(createUserDto);
+    return this.userRepository.save(newUser);
   }
 
   async findAll(body: FindAllBodyDto) {

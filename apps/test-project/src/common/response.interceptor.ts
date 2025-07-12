@@ -52,6 +52,7 @@ export class ResponseInterceptor<T = Record<string, any>>
 
         const {
           msg = '',
+          code = 0,
           message = '',
           total = null,
           page = null,
@@ -61,7 +62,7 @@ export class ResponseInterceptor<T = Record<string, any>>
 
         const newData = rest && typeof rest === 'object' ? rest : {};
         const result: ApiResponse<any> = {
-          code: 0,
+          code,
           data: null,
           message: msg || message || '成功',
         };
