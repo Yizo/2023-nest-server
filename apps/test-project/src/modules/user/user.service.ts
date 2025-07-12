@@ -121,7 +121,17 @@ export class UserService {
     return this.userRepository.update(id, updateUserDto);
   }
 
-  remove(id: number) {
-    return this.userRepository.delete(id);
+  async remove(id: number) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      return {
+        code: HttpStatus.NOT_FOUND,
+        message: '用户不存在',
+      };
+    }
+    await this.userRepository.remove(user);
+    return {
+      code: 0,
+    };
   }
 }
