@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Headers, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
+import { CreateAuthDto, LoginDto } from './dto/create-auth.dto';
 
 @Controller({
   path: 'auth',
@@ -10,20 +10,19 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() createAuthDto: CreateAuthDto) {
-    console.log('Login attempt with DTO:', createAuthDto);
-    return this.authService.login(createAuthDto);
+  login(@Body() data: LoginDto) {
+    console.log('Login attempt with DTO:', data);
+    return this.authService.login(data);
   }
 
-  @Get('/loginInfo')
-  getLoginInfo(
-    @Query('userId') userId: string,
-    @Headers('access-token') accessToken: string,
-  ) {
-    console.log('Retrieving login information', userId, accessToken);
-    return {
-      userId,
-      accessToken,
-    };
+  @Get('logout')
+  logout(@Headers('Authorization') token: string) {
+    console.log('Logout attempt with token:', token);
+    return this.authService.logout(token);
+  }
+
+  @Post('register')
+  register(@Body() createAuthDto: CreateAuthDto) {
+    return this.authService.register(createAuthDto);
   }
 }

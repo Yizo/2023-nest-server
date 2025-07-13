@@ -83,11 +83,23 @@ export class UserService {
     }
   }
 
-  async findOne(id: number) {
-    return await this.userRepository.findOne({
-      where: { id },
-      relations: ['profile'],
-    });
+  async findOne(id: number): Promise<User | null>;
+  async findOne(username: string, password: string): Promise<User | null>;
+  async findOne(arg1: number | string, arg2?: string): Promise<User | null> {
+    if (typeof arg1 === 'number' && arg2 === undefined) {
+      // 按 id 查
+      return await this.userRepository.findOne({
+        where: { id: arg1 },
+        relations: ['profile'],
+      });
+    } else if (typeof arg1 === 'string' && typeof arg2 === 'string') {
+      // 按 username + password 查
+      return await this.userRepository.findOne({
+        where: { username: arg1, password: arg2 },
+        relations: ['profile'],
+      });
+    }
+    return null;
   }
 
   async update(id: number, updateUserDto: UpdateUserDto) {
