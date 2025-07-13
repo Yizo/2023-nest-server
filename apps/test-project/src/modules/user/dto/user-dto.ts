@@ -44,15 +44,15 @@ export class FindAllBodyDto {
 class UpdateProfileDto {
   @IsOptional()
   @IsString()
-  gender?: string;
+  gender: string;
 
   @IsOptional()
   @IsString()
-  photo?: string;
+  photo: string;
 
   @IsOptional()
   @IsString()
-  address?: string;
+  address: string;
 }
 
 export class UpdateUserDto {

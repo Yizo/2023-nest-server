@@ -6,7 +6,7 @@ import { Profile } from './entities/profile.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Profile]), // 注册 User 实体和 Repository
+    TypeOrmModule.forFeature([Profile]), // 注册 Repository 实体
   ],
   controllers: [ProfileController],
   providers: [ProfileService],

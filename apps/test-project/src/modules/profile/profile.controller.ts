@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
-import { UpdateProfileDto } from './dto/update-profile.dto';
+import { DtoPipe } from '../user/dto/user-dto';
 
 @Controller({
   version: '1',
@@ -17,6 +17,11 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 })
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
+
+  @Post()
+  create(@Body(new DtoPipe()) createProfileDto: CreateProfileDto) {
+    return this.profileService.create(createProfileDto);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {

@@ -6,6 +6,7 @@ import {
   ManyToMany,
   JoinTable,
   OneToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Logs } from '@/modules/logs/logs.entity';
 import { Roles } from '@/modules/roles/roles.entity';
@@ -31,6 +32,13 @@ export class User {
   @JoinTable({ name: 'users_roles' })
   roles: Roles[];
 
-  @OneToOne(() => Profile, (profile) => profile.user)
+  // —— 拥有方：在 User 上声明 @JoinColumn
+  @OneToOne(() => Profile, (profile) => profile.user, {
+    cascade: ['insert', 'update', 'remove'], // 级联插入 & 更新, typeorm会在更新删除前发送sql操作
+    eager: true, // 立即加载 profile（可选）
+    onDelete: 'CASCADE', // 数据库层面：删除 user 时级联删除 profile
+    orphanedRowAction: 'delete', // 断开或删除 user 时，把 profile 当作孤儿删掉
+  })
+  @JoinColumn({ name: 'profileId' }) // 外键列在 profile 表里，字段名为 profileId
   profile: Profile;
 }
