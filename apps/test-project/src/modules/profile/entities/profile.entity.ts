@@ -21,7 +21,10 @@ export class Profile {
   @Column()
   address: string;
 
-  // —— 反向关系
-  @OneToOne(() => User, (user) => user.profile)
+  @OneToOne(() => User, (user) => user.profile, {
+    onDelete: 'CASCADE', // 删除 User 时级联删除 Profile
+    onUpdate: 'CASCADE', // 更新 User 时级联更新 Profile
+  })
+  @JoinColumn()
   user: User;
 }

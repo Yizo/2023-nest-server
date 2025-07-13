@@ -34,4 +34,13 @@ export class ProfileService {
       message: '新增成功',
     };
   }
+
+  async findAll() {
+    const list = await this.proFileRepository.find({ relations: ['user'] });
+    return {
+      code: 0,
+      message: '查询成功',
+      data: list,
+    };
+  }
 }

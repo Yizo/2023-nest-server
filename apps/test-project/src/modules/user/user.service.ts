@@ -2,6 +2,7 @@ import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+import { Profile } from '@/modules/profile/entities/profile.entity'; // 引入 Profile 实体
 import { FindAllBodyDto, UpdateUserDto } from './dto/user-dto';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Profile)
+    private readonly profileRepository: Repository<Profile>,
     private readonly logger: Logger,
   ) {}
   async create(createUserDto: any) {
