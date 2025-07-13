@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from './entities/profile.entity';
 import { CreateProfileDto } from './dto/create-profile.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class ProfileService {
@@ -17,7 +18,6 @@ export class ProfileService {
         where: {
           id: id,
         },
-        relations: ['user'],
       });
       console.log(result);
       return result;
@@ -41,6 +41,14 @@ export class ProfileService {
       code: 0,
       message: '查询成功',
       data: list,
+    };
+  }
+
+  async update(id: number, updateProfileDto: UpdateProfileDto) {
+    await this.proFileRepository.update(id, updateProfileDto);
+    return {
+      code: 0,
+      message: '更新成功',
     };
   }
 }

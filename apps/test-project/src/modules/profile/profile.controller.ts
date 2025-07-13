@@ -10,6 +10,7 @@ import {
 import { ProfileService } from './profile.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { DtoPipe } from '../user/dto/user-dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller({
   version: '1',
@@ -31,5 +32,14 @@ export class ProfileController {
   @Get()
   findAll() {
     return this.profileService.findAll();
+  }
+
+  // 更新用户信息
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body(new DtoPipe()) updateProfileDto: UpdateProfileDto,
+  ) {
+    return this.profileService.update(+id, updateProfileDto);
   }
 }
