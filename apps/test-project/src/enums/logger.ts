@@ -1,4 +1,6 @@
-export enum LoggerConfigKey {
-  MAX_SIZE = 'maxSize',
-  MAX_FILES = 'maxFiles',
-}
+const path = 'logger';
+
+export const LoggerConfigKey = {
+  MAX_SIZE: `${path}.maxSize`,
+  MAX_FILES: `${path}.maxFiles`,
+};

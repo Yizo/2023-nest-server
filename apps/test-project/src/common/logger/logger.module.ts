@@ -55,12 +55,9 @@ export class LoggerModule {
             );
 
             const maxSize =
-              configService.get<string>(`logger.${LoggerConfigKey.MAX_SIZE}`) ||
-              '20m';
+              configService.get<string>(LoggerConfigKey.MAX_SIZE) || '20m';
             const maxFiles =
-              configService.get<string>(
-                `logger.${LoggerConfigKey.MAX_FILES}`,
-              ) || '14d';
+              configService.get<string>(LoggerConfigKey.MAX_FILES) || '14d';
 
             return {
               transports: [
