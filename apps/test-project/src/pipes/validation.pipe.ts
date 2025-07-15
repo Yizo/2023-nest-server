@@ -2,25 +2,39 @@ import {
   PipeTransform,
   Injectable,
   ArgumentMetadata,
-  Inject,
+  HttpStatus,
+  HttpException,
+  Logger,
+  ValidationPipe,
 } from '@nestjs/common';
-import { ValidationPipe } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 @Injectable()
 export class CustomValidationPipe
   extends ValidationPipe
   implements PipeTransform
 {
-  constructor(
-    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-  ) {
+  constructor(private readonly logger?: Logger) {
     super();
   }
 
-  transform(value: any, metadata: ArgumentMetadata) {
-    this.logger.info('用户模块管道-验证管道', { value, metadata });
-    return value;
+  async transform(value: unknown, metadata: ArgumentMetadata) {
+    if (!metadata.metatype) {
+      return value;
+    }
+    this.logger?.log({ value, metadata }, '验证管道');
+    const dto = plainToInstance(metadata.metatype, value);
+    const errors = await validate(dto);
+    if (errors.length > 0) {
+      // 只返回第一个字段的第一个 message
+      const constraints = errors[0].constraints;
+      const errorMessage = constraints
+        ? Object.values(constraints)[0]
+        : '参数校验失败';
+      this.logger?.error({ errorMessage }, '参数校验失败');
+      throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
+    }
+    return dto; // 返回转换后的 DTO 对象
   }
 }

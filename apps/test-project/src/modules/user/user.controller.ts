@@ -11,8 +11,9 @@ import {
   Logger,
   Headers,
 } from '@nestjs/common';
+import { CustomValidationPipe } from '@/pipes/validation.pipe';
 import { UserService } from './user.service';
-import { FindAllBodyDto, DtoPipe, UpdateUserDto } from './dto/user-dto';
+import { FindAllBodyDto, UpdateUserDto } from './dto/user-dto';
 
 @Controller({
   version: '1',
@@ -35,7 +36,7 @@ export class UserController {
   // 查询所有用户
   @Get()
   findAll(
-    @Query(new DtoPipe()) body: FindAllBodyDto,
+    @Query(CustomValidationPipe) body: FindAllBodyDto,
     @Headers() headers: Record<string, string>,
   ) {
     this.logger.log(headers, 'users:Controller:findAll:headers');
@@ -53,7 +54,7 @@ export class UserController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body(new DtoPipe()) updateUserDto: UpdateUserDto,
+    @Body(CustomValidationPipe) updateUserDto: UpdateUserDto,
   ) {
     return this.userService.update(+id, updateUserDto);
   }

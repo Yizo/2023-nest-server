@@ -2,20 +2,13 @@ import {
   IsString,
   IsInt,
   IsEnum,
-  validate,
   Min,
   IsOptional,
   ValidateNested,
 } from 'class-validator';
-import { plainToInstance, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { SortOrder } from '@/enums';
-import {
-  ArgumentMetadata,
-  PipeTransform,
-  Injectable,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Transform } from 'class-transformer';
 
 export class FindAllBodyDto {
   @Type(() => Number)
@@ -29,9 +22,13 @@ export class FindAllBodyDto {
   @IsOptional()
   pageSize: number;
 
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
   @IsEnum(SortOrder)
   @IsOptional()
   sort: SortOrder;
+
   @IsString()
   @IsOptional()
   gender: string;
@@ -68,26 +65,4 @@ export class UpdateUserDto {
   @ValidateNested()
   @Type(() => UpdateProfileDto)
   profile: UpdateProfileDto;
-}
-
-@Injectable()
-export class DtoPipe implements PipeTransform {
-  async transform(value: unknown, metadata: ArgumentMetadata) {
-    if (!metadata.metatype) {
-      return value;
-    }
-    console.log('DtoPipe transform', value, metadata);
-    const dto = plainToInstance(metadata.metatype, value);
-    const errors = await validate(dto);
-    if (errors.length > 0) {
-      // 只返回第一个字段的第一个 message
-      const constraints = errors[0].constraints;
-      const errorMessage = constraints
-        ? Object.values(constraints)[0]
-        : '参数校验失败';
-      console.log('DtoPipe errorMessage', errorMessage);
-      throw new HttpException(errorMessage, HttpStatus.BAD_REQUEST);
-    }
-    return value;
-  }
 }
