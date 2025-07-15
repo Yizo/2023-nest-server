@@ -7,7 +7,9 @@ import {
   Global,
 } from '@nestjs/common';
 import type { MiddlewareConsumer } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_PIPE, APP_FILTER } from '@nestjs/core';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { CustomExceptionFilter } from '@/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from '@/common';
 import { AppController } from './app.controller';
@@ -73,7 +75,17 @@ import { AuthModule } from './modules/auth/auth.module';
           transform: true,
         }),
     },
-    Logger,
+    // 将 nest-winston 日志注入到 NestJS Logger
+    {
+      provide: Logger,
+      useExisting: WINSTON_MODULE_NEST_PROVIDER,
+    },
+    // 全局异常过滤器
+    {
+      provide: APP_FILTER,
+      useFactory: (logger: Logger) => new CustomExceptionFilter(logger),
+      inject: [WINSTON_MODULE_NEST_PROVIDER],
+    },
   ],
   exports: [Logger],
 })
