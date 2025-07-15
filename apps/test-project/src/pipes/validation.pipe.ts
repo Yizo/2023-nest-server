@@ -24,6 +24,7 @@ export class CustomValidationPipe
       return value;
     }
     this.logger?.log({ value, metadata }, '验证管道');
+    // 将普通的 JavaScript 参数对象转换为类型化对象，以便进行验证
     const dto = plainToInstance(metadata.metatype, value);
     const errors = await validate(dto);
     if (errors.length > 0) {

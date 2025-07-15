@@ -5,9 +5,8 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
+  ValidationPipe,
 } from '@nestjs/common';
-import { CustomValidationPipe } from '@/pipes/validation.pipe';
 import { ProfileService } from './profile.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -20,7 +19,7 @@ export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
   @Post()
-  create(@Body(CustomValidationPipe) createProfileDto: CreateProfileDto) {
+  create(@Body(ValidationPipe) createProfileDto: CreateProfileDto) {
     return this.profileService.create(createProfileDto);
   }
 
@@ -38,7 +37,7 @@ export class ProfileController {
   @Patch(':id')
   update(
     @Param('id') id: string,
-    @Body(CustomValidationPipe) updateProfileDto: UpdateProfileDto,
+    @Body(ValidationPipe) updateProfileDto: UpdateProfileDto,
   ) {
     return this.profileService.update(+id, updateProfileDto);
   }
