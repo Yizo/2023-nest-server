@@ -5,6 +5,7 @@ import { merge } from 'lodash';
 
 export default () => {
   const configDir = join(__dirname, '../../config');
+  console.log(`配置目录: ${configDir}`);
   const env = process.env.NODE_ENV || 'development';
   console.log(`当前环境: ${env}`);
 
@@ -16,8 +17,9 @@ export default () => {
     // 加载环境配置（允许不存在）
     let envConfig = {};
     const envConfigPath = join(configDir, `config.${env}.yml`);
-    if (readFileSync(envConfigPath, 'utf8')) {
-      envConfig = yaml.load(readFileSync(envConfigPath, 'utf8')) || {};
+    const envConfigContent = readFileSync(envConfigPath, 'utf8');
+    if (envConfigContent) {
+      envConfig = yaml.load(envConfigContent) || {};
     }
     // 深合并配置
     const mergedConfig = merge(defaultConfig, envConfig);

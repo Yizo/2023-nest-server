@@ -75,9 +75,10 @@ import { AuthModule } from './modules/auth/auth.module';
           transform: true,
         }),
     },
-    // 将 nest-winston 日志注入到 NestJS Logger
     {
+      // 这里只起到一个别名的作用
       provide: Logger,
+      // 指定要复用的类, 实际上是将 nest-winston 日志注入到 NestJS Logger
       useExisting: WINSTON_MODULE_NEST_PROVIDER,
     },
     // 全局异常过滤器

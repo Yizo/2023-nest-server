@@ -14,11 +14,11 @@ import { JwtConfig } from '@/enums/jwt';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const secret = configService.get<string>(JwtConfig.SECRET);
+        const secret = configService.get<string>(JwtConfig.SECRET, '');
         return {
           secret,
           signOptions: {
-            expiresIn: configService.get<string>(JwtConfig.EXPIRATION) || '1h',
+            expiresIn: configService.get<string>(JwtConfig.EXPIRATION, '1h'),
           },
         };
       },
