@@ -11,14 +11,17 @@ import {
   Logger,
   Headers,
   ValidationPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { FindAllBodyDto, UpdateUserDto } from './dto/user-dto';
+import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 
 @Controller({
   version: '1',
   path: 'users',
 })
+@UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(
     private readonly userService: UserService,

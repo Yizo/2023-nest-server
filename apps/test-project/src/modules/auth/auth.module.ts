@@ -6,6 +6,8 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtConfig } from '@/enums/jwt';
+import { JwtStrategy } from './jwt.strategy';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Module({
   imports: [
@@ -17,6 +19,7 @@ import { JwtConfig } from '@/enums/jwt';
         const secret = configService.get<string>(JwtConfig.SECRET, '');
         return {
           secret,
+          global: true,
           signOptions: {
             expiresIn: configService.get<string>(JwtConfig.EXPIRATION, '1h'),
           },
@@ -26,6 +29,7 @@ import { JwtConfig } from '@/enums/jwt';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

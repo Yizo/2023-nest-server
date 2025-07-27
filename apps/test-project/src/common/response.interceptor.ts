@@ -29,8 +29,6 @@ export class ResponseInterceptor<T = Record<string, any>>
   ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
       map((data) => {
-        const response = context.switchToHttp().getResponse();
-
         this.logger.log({ data }, '全局响应拦截器');
 
         // 针对字符串、数字、Buffer、Stream等非对象类型特殊处理

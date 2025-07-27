@@ -93,10 +93,11 @@ export class UserService {
         relations: ['profile'],
       });
     } else if (typeof arg1 === 'string' && typeof arg2 === 'string') {
-      // 按 username + password 查
+      // 按 username + password 查, 需要返回id
       return await this.userRepository.findOne({
         where: { username: arg1, password: arg2 },
         relations: ['profile'],
+        select: ['id', 'username', 'password'],
       });
     }
     return null;
