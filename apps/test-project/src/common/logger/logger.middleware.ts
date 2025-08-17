@@ -21,7 +21,7 @@ export class LoggerMiddleware implements NestMiddleware {
       subdomains: req.subdomains,
     };
 
-    this.logger.log({ requestInfo }, '全局中间件-HTTP请求信息');
+    // this.logger.log({ requestInfo }, '全局中间件-HTTP请求信息');
 
     next();
   }

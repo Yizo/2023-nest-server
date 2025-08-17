@@ -23,3 +23,7 @@ jwt:
   refreshTokenExpiration: 30d # 刷新令牌的过期时间
   enable: true # 是否启用JWT认证
 
+defaultRole:
+  id: 1
+  name: 普通用户
+

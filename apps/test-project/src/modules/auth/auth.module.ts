@@ -19,7 +19,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
         const secret = configService.get<string>(JwtConfig.SECRET, '');
         return {
           secret,
-          global: true,
+          global: false,  // 改为false，不再全局应用JWT认证
           signOptions: {
             expiresIn: configService.get<string>(JwtConfig.EXPIRATION, '1h'),
           },

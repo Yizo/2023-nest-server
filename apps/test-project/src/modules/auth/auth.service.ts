@@ -25,11 +25,14 @@ export class AuthService {
 
       this.logger.log(token, 'auth:service:login: token');
 
+      // 注意：这里不应该将密码返回给客户端
+      const { password: _, ...userWithoutPassword } = user;
+
       return {
         code: 0,
         message: '登录成功',
         data: {
-          ...user,
+          ...userWithoutPassword,
           token,
         },
       };
@@ -45,8 +48,8 @@ export class AuthService {
 
   // 注册
   async register(createAuthDto: CreateAuthDto) {
-    const user = await this.userService.create(createAuthDto);
-    if (user) {
+    const result = await this.userService.create(createAuthDto);
+    if (result) {
       return {
         code: 0,
         message: '注册成功',

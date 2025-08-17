@@ -14,14 +14,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { FindAllBodyDto, UpdateUserDto } from './dto/user-dto';
+import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
 import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
 
 @Controller({
   version: '1',
   path: 'users',
 })
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -30,7 +30,7 @@ export class UserController {
 
   // 查询单个用户
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: string) {
+  findOne(@Param('id') id: string) {
     console.log('id', id);
     this.logger.log(id, 'users:Controller:findOne:id');
     return this.userService.findOne(+id);
@@ -49,7 +49,7 @@ export class UserController {
 
   // 新增用户
   @Post()
-  create(@Body() createUserDto: any) {
+  create(@Body(ValidationPipe) createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
 

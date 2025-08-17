@@ -5,6 +5,7 @@ import {
   Min,
   IsOptional,
   ValidateNested,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { SortOrder } from '@/enums';
@@ -52,6 +53,34 @@ class UpdateProfileDto {
   address: string;
 }
 
+export class CreateUserDto {
+  @IsString()
+  username: string;
+
+  @IsString()
+  password: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpdateProfileDto)
+  profile?: UpdateProfileDto;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  roles?: number[];
+}
+
+class UpdateRoleDto {
+  @IsInt()
+  @IsOptional()
+  id: number;
+
+  @IsString()
+  @IsOptional()
+  name: string;
+}
+
 export class UpdateUserDto {
   @IsString()
   @IsOptional()
@@ -65,4 +94,7 @@ export class UpdateUserDto {
   @ValidateNested()
   @Type(() => UpdateProfileDto)
   profile: UpdateProfileDto;
+
+  @IsOptional()
+  roles: UpdateRoleDto[];
 }

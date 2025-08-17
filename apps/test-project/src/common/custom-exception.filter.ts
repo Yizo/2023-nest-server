@@ -135,28 +135,28 @@ export class CustomExceptionFilter implements ExceptionFilter {
     const result = handler(exception);
 
     // 记录日志
-    this.logger.error(
-      {
-        message: result.message,
-        code: result.customCode || result.status,
-        method: request.method,
-        path: request.url,
-        url: request.url,
-        headers: request.headers,
-        query: request.query,
-        params: request.params,
-        body: request.body,
-        ip: request.ip,
-        protocol: request.protocol,
-        originalUrl: request.originalUrl,
-        hostname: request.hostname,
-        subdomains: request.subdomains,
-        exception: exception['name'] ?? 'UnknownException',
-        details: result.details,
-      },
-      result.stack,
-      '全局过滤器',
-    );
+    // this.logger.error(
+    //   {
+    //     message: result.message,
+    //     code: result.customCode || result.status,
+    //     method: request.method,
+    //     path: request.url,
+    //     url: request.url,
+    //     headers: request.headers,
+    //     query: request.query,
+    //     params: request.params,
+    //     body: request.body,
+    //     ip: request.ip,
+    //     protocol: request.protocol,
+    //     originalUrl: request.originalUrl,
+    //     hostname: request.hostname,
+    //     subdomains: request.subdomains,
+    //     exception: exception['name'] ?? 'UnknownException',
+    //     details: result.details,
+    //   },
+    //   result.stack,
+    //   '全局过滤器',
+    // );
 
     // 构建并发送响应
     const responseBody = {
