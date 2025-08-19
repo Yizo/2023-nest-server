@@ -12,33 +12,21 @@ export class AuthService {
     private readonly logger: Logger,
   ) {}
 
-  async login(data: LoginDto) {
-    const { username, password } = data;
-    const user = await this.userService.findOne(username, password);
+  async login(user: any) {
+    const payload = { username: user.username, sub: user.id };
 
-    this.logger.log(user, 'auth:service:login=user');
+    const token = await this.jwtService.signAsync(payload);
 
-    if (user && user.password === password) {
-      const payload = { username: username, sub: user.id };
+    this.logger.log(token, 'auth:service:login: token');
 
-      const token = await this.jwtService.signAsync(payload);
-
-      this.logger.log(token, 'auth:service:login: token');
-
-      // 注意：这里不应该将密码返回给客户端
-      const { password: _, ...userWithoutPassword } = user;
-
-      return {
-        code: 0,
-        message: '登录成功',
-        data: {
-          ...userWithoutPassword,
-          token,
-        },
-      };
-    } else {
-      throw new UnauthorizedException('用户名或密码错误');
-    }
+    return {
+      code: 0,
+      message: '登录成功',
+      data: {
+        username: user.username,
+        token,
+      },
+    };
   }
 
   logout(token: string) {
@@ -46,14 +34,11 @@ export class AuthService {
     return 'This action logs out a user';
   }
 
-  // 注册
-  async register(createAuthDto: CreateAuthDto) {
-    const result = await this.userService.create(createAuthDto);
-    if (result) {
-      return {
-        code: 0,
-        message: '注册成功',
-      };
+  async validateUser(username: string, password: string) {
+    const user = await this.userService.findOne(username, password);
+    if (user && user.password === password) {
+      return user;
     }
+    return null;
   }
 }

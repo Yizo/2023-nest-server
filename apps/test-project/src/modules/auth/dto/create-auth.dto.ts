@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsString, IsOptional, IsArray, IsInt } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsArray,
+  IsInt,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class UpdateProfileDto {

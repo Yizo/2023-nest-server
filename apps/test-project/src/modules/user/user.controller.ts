@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Delete,
-  ParseIntPipe,
   Query,
   Logger,
   Headers,
@@ -21,7 +20,7 @@ import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
   version: '1',
   path: 'users',
 })
-// @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(
     private readonly userService: UserService,

@@ -37,7 +37,7 @@ export class UserService implements OnModuleInit {
 
     // 首先尝试通过ID查找默认角色
     if (defaultRoleId) {
-      let role = await this.rolesService.findOne(defaultRoleId);
+      const role = await this.rolesService.findOne(defaultRoleId);
       if (role) {
         return role;
       }
@@ -156,8 +156,8 @@ export class UserService implements OnModuleInit {
         relations: ['profile', 'roles'],
       });
     } else if (typeof arg1 === 'string' && typeof arg2 === 'string') {
-      // 按 username + password 查, 需要返回密码用于验证
-      return await this.userRepository.findOne({
+      // 传递用户+密码时, 做验证
+      const user = await this.userRepository.findOne({
         where: { username: arg1 },
         relations: ['profile', 'roles'],
         select: {
@@ -166,6 +166,10 @@ export class UserService implements OnModuleInit {
           password: true,
         },
       });
+      if (user && user.password === arg2) {
+        return user;
+      }
+      return null;
     }
     return null;
   }

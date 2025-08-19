@@ -7,7 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtConfig } from '@/enums/jwt';
 import { JwtStrategy } from './jwt.strategy';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { LocalStrategy } from './local.strategy';
 
 @Module({
   imports: [
@@ -19,7 +19,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
         const secret = configService.get<string>(JwtConfig.SECRET, '');
         return {
           secret,
-          global: false,  // 改为false，不再全局应用JWT认证
+          global: true,
           signOptions: {
             expiresIn: configService.get<string>(JwtConfig.EXPIRATION, '1h'),
           },
@@ -29,7 +29,6 @@ import { JwtAuthGuard } from './jwt-auth.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard],
-  exports: [AuthService, JwtAuthGuard],
+  providers: [AuthService, JwtStrategy, LocalStrategy],
 })
 export class AuthModule {}
