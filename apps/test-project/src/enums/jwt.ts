@@ -53,3 +53,9 @@ export const JwtErrorMessages = {
   [JwtErrorCode.ROLE_REQUIRED]: '需要特定角色',
   [JwtErrorCode.PERMISSION_DENIED]: '访问被拒绝',
 };
+
+// 公共路由
+export const IS_PUBLIC_KEY = 'isPublic';
+
+// tokenKey
+export const TOKEN_KEY = 'token';

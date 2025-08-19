@@ -8,7 +8,7 @@ import {
   Delete,
   Query,
   Logger,
-  Headers,
+  Request,
   ValidationPipe,
   UseGuards,
 } from '@nestjs/common';
@@ -37,11 +37,8 @@ export class UserController {
 
   // 查询所有用户
   @Get()
-  findAll(
-    @Query(ValidationPipe) body: FindAllBodyDto,
-    @Headers() headers: Record<string, string>,
-  ) {
-    this.logger.log(headers, 'users:Controller:findAll:headers');
+  findAll(@Query(ValidationPipe) body: FindAllBodyDto, @Request() req: any) {
+    this.logger.log(req.user, 'users:Controller:findAll:req:user');
     this.logger.log(body, 'users:Controller:findAll:query');
     return this.userService.findAll(body);
   }

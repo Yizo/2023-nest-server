@@ -1,31 +1,34 @@
 import {
   ExecutionContext,
   Injectable,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
+import { Reflector } from '@nestjs/core';
 import {
   JsonWebTokenError,
   TokenExpiredError,
   NotBeforeError,
 } from 'jsonwebtoken';
-import { JwtErrorCode, JwtErrorMessages } from '@/enums/jwt';
+import { IS_PUBLIC_KEY, JwtErrorCode, JwtErrorMessages } from '@/enums/jwt';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private readonly logger: Logger) {
+  constructor(private readonly reflector: Reflector) {
     super();
   }
 
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const token = request.headers.authorization;
-    this.logger.log(token, 'jwt-auth.guard:token');
-    // 策略验证
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
     return super.canActivate(context);
   }
 
@@ -35,19 +38,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
 
-    // 如果没有token
-    if (!request.headers.authorization) {
-      this.logger.warn('No token provided', 'jwt-auth.guard');
-      throw new UnauthorizedException({
-        code: JwtErrorCode.NO_TOKEN_PROVIDED,
-        message: JwtErrorMessages[JwtErrorCode.NO_TOKEN_PROVIDED],
-      });
-    }
-
     // 如果有错误
     if (err) {
-      this.logger.error(`JWT Error: ${err.message}`, 'jwt-auth.guard');
-
       // Token过期
       if (err instanceof TokenExpiredError) {
         throw new UnauthorizedException({
@@ -111,18 +103,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     // 如果验证失败但没有具体错误信息
     if (!user) {
-      this.logger.warn(
-        'Token validation failed - no user returned',
-        'jwt-auth.guard',
-      );
       throw new UnauthorizedException({
         code: JwtErrorCode.TOKEN_VALIDATION_FAILED,
         message: JwtErrorMessages[JwtErrorCode.TOKEN_VALIDATION_FAILED],
       });
     }
-
-    // 验证成功，返回用户信息
-    this.logger.log(`User authenticated: ${user.username}`, 'jwt-auth.guard');
     return user;
   }
 }

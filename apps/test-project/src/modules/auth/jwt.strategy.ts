@@ -1,23 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { JwtConfig } from '@/enums/jwt';
+import { JwtConfig, TOKEN_KEY } from '@/enums/jwt';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly logger = new Logger(JwtStrategy.name);
+
   constructor(protected configService: ConfigService) {
     /**
      * 提取token, 验证签名, 成功后调用 validate 方法
      */
+
+    // 先获取配置值
+    const secret = configService.get<string>(JwtConfig.SECRET, '');
+
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
-        ExtractJwt.fromUrlQueryParameter('token'),
-        ExtractJwt.fromHeader('token'),
+        (request) => {
+          return request.headers[TOKEN_KEY] ?? '';
+        },
       ]),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>(JwtConfig.SECRET, ''),
+      secretOrKey: secret,
     });
   }
 
