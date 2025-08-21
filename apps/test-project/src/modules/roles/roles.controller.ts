@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpStatus, Query, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpStatus,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { RolesService } from './roles.service';
 import { CreateRoleDto, UpdateRoleDto, FindAllRoleDto } from './dto/role-dto';
 
@@ -70,8 +81,8 @@ export class RolesController {
 
   @Put(':id')
   async update(
-    @Param('id', ParseIntPipe) id: number, 
-    @Body() updateRoleDto: UpdateRoleDto
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateRoleDto: UpdateRoleDto,
   ) {
     try {
       const role = await this.rolesService.update(id, updateRoleDto);

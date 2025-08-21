@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
-import { JwtAuthGuard } from '@/modules/auth/jwt-auth.guard';
+import { JwtAuthGuard } from '@/modules/auth/jwt.guard';
 
 @Controller({
   version: '1',

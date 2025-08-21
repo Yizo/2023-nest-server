@@ -2,11 +2,11 @@ import { Injectable, Logger, HttpStatus, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from './entities/user.entity';
-import { Profile } from '@/modules/profile/entities/profile.entity'; // 引入 Profile 实体
 import { Role } from '@/modules/roles/roles.entity'; // 引入 Role 实体
 import { RolesService } from '@/modules/roles/roles.service'; // 引入 RolesService
 import { ConfigService } from '@nestjs/config'; // 引入 ConfigService
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
+import { hash, compare } from 'bcrypt';
 
 @Injectable()
 export class UserService implements OnModuleInit {
@@ -15,8 +15,6 @@ export class UserService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Profile)
-    private readonly profileRepository: Repository<Profile>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
     private readonly rolesService: RolesService,
@@ -71,6 +69,9 @@ export class UserService implements OnModuleInit {
         roles = [this.defaultRole];
       }
     }
+
+    const hashedPassword = await hash(createUserDto.password, 10);
+    createUserDto.password = hashedPassword;
 
     const newUser = this.userRepository.create({
       ...createUserDto,
@@ -166,7 +167,7 @@ export class UserService implements OnModuleInit {
           password: true,
         },
       });
-      if (user && user.password === arg2) {
+      if (user && (await compare(arg2, user.password))) {
         return user;
       }
       return null;
