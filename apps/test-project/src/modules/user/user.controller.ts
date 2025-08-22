@@ -8,13 +8,14 @@ import {
   Delete,
   Query,
   Logger,
-  Request,
   ValidationPipe,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
-import { JwtAuthGuard } from '@/modules/auth/jwt.guard';
+import { JwtAuthGuard } from '@/modules/auth/guard';
+import { ReqUser } from '@/decorators';
+import { User } from '@/modules/user/entities/user.entity';
 
 @Controller({
   version: '1',
@@ -37,8 +38,8 @@ export class UserController {
 
   // 查询所有用户
   @Get()
-  findAll(@Query(ValidationPipe) body: FindAllBodyDto, @Request() req: any) {
-    this.logger.log(req.user, 'users:Controller:findAll:req:user');
+  findAll(@Query(ValidationPipe) body: FindAllBodyDto, @ReqUser() user: User) {
+    this.logger.log(user, 'users:Controller:findAll:req:user');
     this.logger.log(body, 'users:Controller:findAll:query');
     return this.userService.findAll(body);
   }

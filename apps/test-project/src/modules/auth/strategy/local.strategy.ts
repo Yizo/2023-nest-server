@@ -20,6 +20,6 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
         message: '账号或密码错误',
       });
     }
-    return user; // 自动挂载到 req.user
+    return user;
   }
 }
