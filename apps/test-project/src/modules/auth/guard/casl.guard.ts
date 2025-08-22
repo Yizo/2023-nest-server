@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { CaslAbilityService } from './casl-ability.service';
+import { CaslAbilityService } from '../casl-ability.service';
 import { CHECK_POLICIES_KEY } from '@/enums';
 import type { CaslTypeHandler } from '@/decorators/casl.decorator';
 

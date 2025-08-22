@@ -36,8 +36,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
    * 在策略验证后,对返回的结果做最后的处理
    */
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    const request = context.switchToHttp().getRequest();
-
     // 如果有错误
     if (err) {
       // Token过期

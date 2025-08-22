@@ -8,8 +8,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/create-auth.dto';
-import { JwtAuthGuard } from './jwt.guard';
-import { LocalAuthGuard } from './local.guard';
+import { JwtAuthGuard, LocalAuthGuard } from './guard';
 
 @Controller({
   version: '1',
