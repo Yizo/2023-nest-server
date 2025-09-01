@@ -23,12 +23,11 @@
     "docker:logs": "docker-compose -f ./docker/docker-compose.yml logs -f",
     "docker:init": "npm run docker:build && npm run docker:up",
     "docker:build": "docker-compose -f ./docker/docker-compose.yml build",
-    "docker:reset": "npm run docker:down && npm run docker:up"
+    "docker:reset": "npm run docker:down && npm run docker:up",
+    "dist": "node dist/src/main",
+    "pm2:dist": "pm2 start dist/src/main.js --name nestAdmin"
   },
-  "dependencies": {
-    "@nestjs/mapped-types": "*"
-  },
-  "devDependencies": {},
+  "dependencies": {},
   "jest": {
     "moduleFileExtensions": [
       "js",
