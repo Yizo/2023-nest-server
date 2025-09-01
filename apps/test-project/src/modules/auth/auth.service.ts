@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { compare } from 'bcrypt';
 import { UserService } from '@/modules/user/user.service';
 
 @Injectable()
@@ -39,7 +38,7 @@ export class AuthService {
       username,
       password,
     );
-    if (user && (await compare(password, user.password))) {
+    if (user) {
       return user;
     }
     return null;

@@ -6,7 +6,7 @@ import { Role } from '@/modules/roles/roles.entity'; // 引入 Role 实体
 import { RolesService } from '@/modules/roles/roles.service'; // 引入 RolesService
 import { ConfigService } from '@nestjs/config'; // 引入 ConfigService
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
-import { hash, compare } from 'bcrypt';
+import { hash } from 'bcrypt';
 
 @Injectable()
 export class UserService implements OnModuleInit {
@@ -158,7 +158,7 @@ export class UserService implements OnModuleInit {
     }
   }
 
-  // 通过用户id+密码返回用户信息
+  // 通过用户id+密码返回密码+用户信息
   async findOneByUserNameAndPassword(userName: string, password: string) {
     const user = await this.userRepository.findOne({
       where: { username: userName },
@@ -169,7 +169,7 @@ export class UserService implements OnModuleInit {
         password: true,
       },
     });
-    if (user && (await compare(password, user.password))) {
+    if (user && password === user.password) {
       return user;
     }
     return null;
