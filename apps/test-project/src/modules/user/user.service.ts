@@ -147,30 +147,30 @@ export class UserService implements OnModuleInit {
     }
   }
 
-  async findOne(id: number): Promise<User | null>;
-  async findOne(username: string, password: string): Promise<User | null>;
-  async findOne(arg1: number | string, arg2?: string): Promise<User | null> {
-    if (typeof arg1 === 'number' && arg2 === undefined) {
-      // 按 id 查
+  async findOne(id: number): Promise<User | null> {
+    try {
       return await this.userRepository.findOne({
-        where: { id: arg1 },
+        where: { id },
         relations: ['profile', 'roles'],
       });
-    } else if (typeof arg1 === 'string' && typeof arg2 === 'string') {
-      // 传递用户+密码时, 做验证
-      const user = await this.userRepository.findOne({
-        where: { username: arg1 },
-        relations: ['profile', 'roles'],
-        select: {
-          id: true,
-          username: true,
-          password: true,
-        },
-      });
-      if (user && (await compare(arg2, user.password))) {
-        return user;
-      }
+    } catch (error) {
       return null;
+    }
+  }
+
+  // 通过用户id+密码返回用户信息
+  async findOneByUserNameAndPassword(userName: string, password: string) {
+    const user = await this.userRepository.findOne({
+      where: { username: userName },
+      relations: ['profile', 'roles'],
+      select: {
+        id: true,
+        username: true,
+        password: true,
+      },
+    });
+    if (user && (await compare(password, user.password))) {
+      return user;
     }
     return null;
   }

@@ -1,3 +1,8 @@
+## 环境模块
+mode:
+  name: 'production'
+  development: false
+
 db:
   type: mysql
   autoLoadEntities: true

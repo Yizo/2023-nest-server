@@ -23,6 +23,7 @@ import { ProfileModule } from './modules/profile/profile.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { LogsModule } from './modules/logs/logs.module';
 import { CustomValidationPipe } from './pipes/validation.pipe';
+import { SessionModule, SessionMiddleware } from '@/common/session';
 
 @Global()
 @Module({
@@ -57,6 +58,7 @@ import { CustomValidationPipe } from './pipes/validation.pipe';
     ProfileModule,
     AuthModule,
     LogsModule,
+    SessionModule,
   ],
   controllers: [AppController],
   providers: [
@@ -86,7 +88,7 @@ import { CustomValidationPipe } from './pipes/validation.pipe';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware).forRoutes({
+    consumer.apply(LoggerMiddleware, SessionMiddleware).forRoutes({
       path: '*',
       method: RequestMethod.ALL,
     });

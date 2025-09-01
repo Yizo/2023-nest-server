@@ -1,3 +1,8 @@
+## 环境模块
+mode:
+  name: 'dev'
+  development: true
+
 db:
   image: mysql:8.0.31
   command: --default-authentication-plugin=mysql_native_password
@@ -6,6 +11,9 @@ db:
   password: dev_secret
   SYNCHRONIZE: true,
   LOGGING: true
+
+session:
+  secret: keyboardCat
 
 user:
   image: mysql:8.0.31
@@ -26,4 +34,3 @@ jwt:
 defaultRole:
   id: 1
   name: 普通用户
-
