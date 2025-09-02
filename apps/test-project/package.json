@@ -24,8 +24,10 @@
     "docker:init": "npm run docker:build && npm run docker:up",
     "docker:build": "docker-compose -f ./docker/docker-compose.yml build",
     "docker:reset": "npm run docker:down && npm run docker:up",
-    "dist": "node dist/src/main",
-    "pm2:dist": "pm2 start dist/src/main.js --name nestAdmin"
+    "dist": "cross-env NODE_ENV=production node dist/src/main",
+    "pm2:prod": "npm run build && pm2 start ecosystem.config.js --env production",
+    "pm2:dev": "npm run build && pm2 start ecosystem.config.js --env development",
+    "pm2:del": "pm2 delete all"
   },
   "dependencies": {},
   "jest": {
