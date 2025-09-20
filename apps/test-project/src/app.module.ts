@@ -23,7 +23,7 @@ import { ProfileModule } from './modules/profile/profile.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { LogsModule } from './modules/logs/logs.module';
 import { CustomValidationPipe } from './pipes/validation.pipe';
-import { SessionModule, SessionMiddleware } from '@/common/session';
+import { SessionModule, SessionMiddleware } from '@/common';
 
 @Global()
 @Module({

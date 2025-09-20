@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nest generate:*)",
+      "Bash(npx nest generate module:*)",
+      "Bash(npx nest generate controller:*)",
+      "Bash(npx nest generate service:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
