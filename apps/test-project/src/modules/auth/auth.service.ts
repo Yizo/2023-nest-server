@@ -1,14 +1,18 @@
-import { Injectable } from '@nestjs/common';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Redis } from 'ioredis';
+import { InjectRedis } from '@nestjs-modules/ioredis';
+import { ConfigService } from '@nestjs/config';
 import { UserService } from '@/modules/user/user.service';
-
+import { RedisConfig } from '@/enums';
 @Injectable()
 export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly logger: Logger,
+    private readonly configService: ConfigService,
+    @InjectRedis() private readonly redis: Redis,
   ) {}
 
   async login(user: any) {
@@ -17,6 +21,15 @@ export class AuthService {
     const token = await this.jwtService.signAsync(payload);
 
     this.logger.log(token, 'auth:service:login: token');
+    const expiration = this.configService.get(RedisConfig.EXPIRATION);
+    this.logger.log(expiration, 'auth:service:login: expiration');
+
+    await this.redis.set(
+      user.username + ':' + user.id,
+      token,
+      'EX',
+      expiration,
+    );
 
     return {
       code: 0,

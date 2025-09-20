@@ -8,22 +8,26 @@ import {
 import type { MiddlewareConsumer } from '@nestjs/common';
 import { APP_INTERCEPTOR, APP_PIPE, APP_FILTER } from '@nestjs/core';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
-import { CustomExceptionFilter } from '@/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { LoggerModule } from '@/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { RedisModule } from '@nestjs-modules/ioredis';
+import {
+  CustomExceptionFilter,
+  LoggerModule,
+  LoggerMiddleware,
+  ResponseInterceptor,
+  SessionModule,
+  SessionMiddleware,
+} from '@/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from '../config/configuration';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { XueXiModule } from '@/modules/xue-xi/xue-xi.module';
 import { UserModule } from '@/modules/user/user.module';
-import { LoggerMiddleware, ResponseInterceptor } from '@/common';
-import { DbConfigKey } from '@/enums';
-import { ProfileModule } from './modules/profile/profile.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { LogsModule } from './modules/logs/logs.module';
-import { CustomValidationPipe } from './pipes/validation.pipe';
-import { SessionModule, SessionMiddleware } from '@/common';
+import { DbConfigKey, RedisConfig } from '@/enums';
+import { ProfileModule } from '@/modules/profile/profile.module';
+import { AuthModule } from '@/modules/auth/auth.module';
+import { LogsModule } from '@/modules/logs/logs.module';
+import { CustomValidationPipe } from '@/pipes/validation.pipe';
 
 @Global()
 @Module({
@@ -53,7 +57,22 @@ import { SessionModule, SessionMiddleware } from '@/common';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
       }),
     }),
-    XueXiModule,
+    RedisModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: Record<string, any>) => {
+        const host = config.get(RedisConfig.HOST);
+        const port = config.get(RedisConfig.PORT);
+        const password = config.get(RedisConfig.PASSWORD);
+        return {
+          type: 'single',
+          url: `redis://${host}:${port}`,
+          options: {
+            password,
+          },
+        };
+      },
+    }),
     UserModule,
     ProfileModule,
     AuthModule,
