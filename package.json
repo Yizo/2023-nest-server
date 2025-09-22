@@ -9,7 +9,9 @@
 		"main:dev": "pnpm -F main-server start:dev",
 		"boss": "pnpm -F reptile-boss start:dev",
 		"test": "pnpm -F test-project start:dev",
-		"test-project:debug": "pnpm -F test-project start:debug"
+		"test-project:debug": "pnpm -F nest-admin start:debug",
+		"admin:build": "pnpm -F nest-admin build",
+		"admin:start": "pnpm -F nest-admin pm2:prod"
 	},
 	"dependencies": {
 		"@casl/ability": "^6.7.3",
