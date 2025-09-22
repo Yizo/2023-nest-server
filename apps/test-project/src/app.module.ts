@@ -10,7 +10,7 @@ import { APP_INTERCEPTOR, APP_PIPE, APP_FILTER } from '@nestjs/core';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RedisModule } from '@nestjs-modules/ioredis';
+// import { RedisModule } from '@nestjs-modules/ioredis';
 import { CacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
 import {
@@ -59,22 +59,22 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
       }),
     }),
-    RedisModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: Record<string, any>) => {
-        const host = config.get(RedisConfig.HOST);
-        const port = config.get(RedisConfig.PORT);
-        const password = config.get(RedisConfig.PASSWORD);
-        return {
-          type: 'single',
-          url: `redis://${host}:${port}`,
-          options: {
-            password,
-          },
-        };
-      },
-    }),
+    // RedisModule.forRootAsync({
+    //   imports: [ConfigModule],
+    //   inject: [ConfigService],
+    //   useFactory: (config: Record<string, any>) => {
+    //     const host = config.get(RedisConfig.HOST);
+    //     const port = config.get(RedisConfig.PORT);
+    //     const password = config.get(RedisConfig.PASSWORD);
+    //     return {
+    //       type: 'single',
+    //       url: `redis://${host}:${port}`,
+    //       options: {
+    //         password,
+    //       },
+    //     };
+    //   },
+    // }),
     CacheModule.registerAsync({
       inject: [ConfigService],
       isGlobal: true,
@@ -85,12 +85,16 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
 
         const store = new KeyvRedis({
           url: `redis://${host}:${port}`,
-          options: {
-            password,
-          },
+          password: password.toString(),
         });
+
+
+        store.on('error', (error) => {
+            console.log('KeyvRedis: error', error);
+        })
+
         return {
-          store,
+          stores: [store],
         };
       },
     }),
