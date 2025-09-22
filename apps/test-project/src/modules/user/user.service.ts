@@ -1,12 +1,14 @@
-import { Injectable, Logger, HttpStatus, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus, OnModuleInit, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import { hash } from 'bcrypt';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { User } from './entities/user.entity';
 import { Role } from '@/modules/roles/roles.entity'; // 引入 Role 实体
 import { RolesService } from '@/modules/roles/roles.service'; // 引入 RolesService
 import { ConfigService } from '@nestjs/config'; // 引入 ConfigService
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
-import { hash } from 'bcrypt';
 
 @Injectable()
 export class UserService implements OnModuleInit {
@@ -20,6 +22,7 @@ export class UserService implements OnModuleInit {
     private readonly rolesService: RolesService,
     private readonly configService: ConfigService,
     private readonly logger: Logger,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async onModuleInit() {
@@ -149,6 +152,8 @@ export class UserService implements OnModuleInit {
 
   async findOne(id: number): Promise<User | null> {
     try {
+      const value = await this.cacheManager.get('user:' + id);
+      this.logger.log(value, 'users:Service:findOne:catch');
       return await this.userRepository.findOne({
         where: { id },
         relations: ['profile', 'roles'],

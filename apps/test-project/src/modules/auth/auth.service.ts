@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Redis } from 'ioredis';
-import { InjectRedis } from '@nestjs-modules/ioredis';
+// import { Redis } from 'ioredis';
+// import { InjectRedis } from '@nestjs-modules/ioredis';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '@/modules/user/user.service';
 import { RedisConfig } from '@/enums';
@@ -12,7 +14,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly logger: Logger,
     private readonly configService: ConfigService,
-    @InjectRedis() private readonly redis: Redis,
+    // @InjectRedis() private readonly redis: Redis
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async login(user: any) {
@@ -24,12 +27,14 @@ export class AuthService {
     const expiration = this.configService.get(RedisConfig.EXPIRATION);
     this.logger.log(expiration, 'auth:service:login: expiration');
 
-    await this.redis.set(
-      user.username + ':' + user.id,
-      token,
-      'EX',
-      expiration,
-    );
+    // await this.redis.set(
+    //  'user:' + user.id,
+    //   token,
+    //   'EX',
+    //   expiration,
+    // );
+
+    await this.cacheManager.set('user:' + user.id, token, expiration * 1000);
 
     return {
       code: 0,

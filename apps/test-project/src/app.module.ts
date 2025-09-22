@@ -11,6 +11,8 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RedisModule } from '@nestjs-modules/ioredis';
+import { CacheModule } from '@nestjs/cache-manager';
+import KeyvRedis from '@keyv/redis';
 import {
   CustomExceptionFilter,
   LoggerModule,
@@ -70,6 +72,25 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
           options: {
             password,
           },
+        };
+      },
+    }),
+    CacheModule.registerAsync({
+      inject: [ConfigService],
+      isGlobal: true,
+      useFactory: (config: Record<string, any>) => {
+        const host = config.get(RedisConfig.HOST);
+        const port = config.get(RedisConfig.PORT);
+        const password = config.get(RedisConfig.PASSWORD);
+
+        const store = new KeyvRedis({
+          url: `redis://${host}:${port}`,
+          options: {
+            password,
+          },
+        });
+        return {
+          store,
         };
       },
     }),
