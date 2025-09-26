@@ -2,8 +2,18 @@
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
+  "root": "/",
   "compilerOptions": {
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "watchAssets": true,
+    "assets": [
+      {
+        "include": "../config/*.{yml,yaml}",
+        "include说明": "相对于sourceRoot",
+        "outDir": "dist/config",
+        "outDir说明": "相对于root"
+      }
+    ]
   },
   "generateOptions": {
     "spec": false

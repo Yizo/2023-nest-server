@@ -4,10 +4,13 @@ import * as yaml from 'js-yaml';
 import { merge } from 'lodash';
 
 export default () => {
-  const configDir = join(__dirname, '../../config');
-  console.log(`配置目录: ${configDir}`);
   const env = process.env.NODE_ENV || 'development';
   console.log(`当前环境: ${env}`);
+
+  const configDir = __dirname;
+  console.log('__filename', __filename);
+  console.log('__dirname', __dirname);
+  console.log(`配置目录: ${configDir}`);
 
   try {
     // 加载默认配置

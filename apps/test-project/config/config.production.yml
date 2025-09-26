@@ -17,6 +17,13 @@ db:
   logging: true
   logger: file
 
+redis:
+  host: 39.96.165.134
+  port: 6379
+  password: 123456
+  # 默认缓存时间, 单位秒
+  expiration: 3600
+
 user:
   image: mysql:8.0.32
   command: --default-authentication-plugin=mysql_native_password
