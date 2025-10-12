@@ -1,17 +1,17 @@
-import { Injectable, Logger, HttpStatus, OnModuleInit, Inject } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { hash } from 'bcrypt';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { User } from './entities/user.entity';
-import { Role } from '@/modules/roles/roles.entity'; // 引入 Role 实体
-import { RolesService } from '@/modules/roles/roles.service'; // 引入 RolesService
-import { ConfigService } from '@nestjs/config'; // 引入 ConfigService
+import { Role } from '@/modules/roles/entities/roles.entity';
+import { RolesService } from '@/modules/roles/roles.service';
+import { ConfigService } from '@nestjs/config';
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
 
 @Injectable()
-export class UserService implements OnModuleInit {
+export class UserService {
   private defaultRole: Role | null = null;
 
   constructor(
@@ -24,43 +24,6 @@ export class UserService implements OnModuleInit {
     private readonly logger: Logger,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
-
-  async onModuleInit() {
-    // 应用启动时创建默认角色
-    this.defaultRole = await this.createDefaultRole();
-  }
-
-  private async createDefaultRole(): Promise<Role | null> {
-    // 从配置文件中获取默认角色ID或名称
-    const defaultRoleId = this.configService.get<number>('defaultRole.id');
-    const defaultRoleName =
-      this.configService.get<string>('defaultRole.name') || '普通用户';
-
-    // 首先尝试通过ID查找默认角色
-    if (defaultRoleId) {
-      const role = await this.rolesService.findOne(defaultRoleId);
-      if (role) {
-        return role;
-      }
-    }
-
-    // 如果通过ID找不到，则尝试通过名称查找
-    let role = await this.rolesService.findByName(defaultRoleName);
-    if (!role) {
-      // 如果都找不到，则创建默认角色
-      try {
-        role = await this.rolesService.create({ name: defaultRoleName });
-      } catch (error) {
-        // 如果创建失败，则查找第一个可用角色
-        const roles = await this.rolesService.findAll(1, 1);
-        if (roles[0].length > 0) {
-          role = roles[0][0];
-        }
-      }
-    }
-    return role;
-  }
-
   async create(createUserDto: CreateUserDto) {
     // 处理角色关联
     let roles: Role[] = [];

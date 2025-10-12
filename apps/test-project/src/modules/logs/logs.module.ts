@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Logs } from './logs.entity';
+import { Logs } from './entities/user.logs.entity';
 import { LogsService } from './logs.service';
 import { LogsController } from './logs.controller';
 

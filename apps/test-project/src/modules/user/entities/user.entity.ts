@@ -2,38 +2,47 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToMany,
-  ManyToMany,
-  JoinTable,
-  OneToOne,
-  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+  Index,
 } from 'typeorm';
-import { Logs } from '@/modules/logs/logs.entity';
-import { Role } from '@/modules/roles/roles.entity';
-import { Profile } from '@/modules/profile/entities/profile.entity';
+
+export enum UserStatus {
+  Disabled = 0,
+  Enabled = 1,
+}
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ length: 50, comment: '用户登录名' })
+  @Index()
   username: string;
 
-  @Column({ select: false })
+  @Column({
+    select: false,
+    type: 'varchar',
+    length: 255,
+    comment: '用户密码, 加密存储',
+  })
   password: string;
 
-  // 一个用户多个日志
-  @OneToMany(() => Logs, (logs) => logs.user)
-  logs: Logs[];
+  @Column({ type: 'int', default: 1, comment: '用户状态, 0: 禁用, 1: 启用' })
+  status: UserStatus;
 
-  @ManyToMany(() => Role, (roles) => roles.users)
-  // 多对多关系，指定中间表名， 只需在主控方使用 @JoinTable
-  @JoinTable({ name: 'users_roles' })
-  roles: Role[];
+  /**
+   * 软删除时间
+   * 关联逻辑：删除用户时需要同步软删除关联的Profile和Logs
+   *  */
+  @DeleteDateColumn({ type: 'datetime', nullable: true, comment: '软删除时间' })
+  deletedAt: Date | null;
 
-  @OneToOne(() => Profile, (profile) => profile.user, {
-    cascade: true,
-  })
-  profile: Profile;
+  @CreateDateColumn({ type: 'datetime', comment: '创建时间, 自动生成' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'datetime', comment: '更新时间, 自动更新' })
+  updatedAt: Date;
 }

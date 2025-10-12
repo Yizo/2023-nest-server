@@ -8,7 +8,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { LogsService } from './logs.service';
-import { Logs } from './logs.entity';
+import { Logs } from './entities/user.logs.entity';
 
 @Controller('logs')
 export class LogsController {
