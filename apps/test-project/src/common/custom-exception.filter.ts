@@ -115,6 +115,40 @@ const exceptionHandlers = {
 export class CustomExceptionFilter implements ExceptionFilter {
   constructor(private readonly logger: Logger) {}
 
+  // 过滤敏感信息的方法
+  private sanitizeBody(body: any): any {
+    if (!body || typeof body !== 'object') {
+      return body;
+    }
+
+    const sensitiveFields = [
+      'password',
+      'passwd',
+      'pwd',
+      'token',
+      'secret',
+      'key',
+      'authorization',
+    ];
+    const sanitized = { ...body };
+
+    // 递归过滤敏感字段
+    const filterObject = (obj: any) => {
+      for (const key in obj) {
+        if (
+          sensitiveFields.some((field) => key.toLowerCase().includes(field))
+        ) {
+          obj[key] = '[FILTERED]';
+        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+          filterObject(obj[key]);
+        }
+      }
+    };
+
+    filterObject(sanitized);
+    return sanitized;
+  }
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -136,29 +170,70 @@ export class CustomExceptionFilter implements ExceptionFilter {
 
     this.logger?.log(result, '全局过滤器:result');
 
-    // 记录日志
-    // this.logger.error(
-    //   {
-    //     message: result.message,
-    //     code: result.customCode || result.status,
-    //     method: request.method,
-    //     path: request.url,
-    //     url: request.url,
-    //     headers: request.headers,
-    //     query: request.query,
-    //     params: request.params,
-    //     body: request.body,
-    //     ip: request.ip,
-    //     protocol: request.protocol,
-    //     originalUrl: request.originalUrl,
-    //     hostname: request.hostname,
-    //     subdomains: request.subdomains,
-    //     exception: exception['name'] ?? 'UnknownException',
-    //     details: result.details,
-    //   },
-    //   result.stack,
-    //   '全局过滤器',
-    // );
+    // 获取请求开始时间（如果存在）
+    const startTime = (request as any).startTime || Date.now();
+    const processingTime = Date.now() - startTime;
+
+    // 生成请求ID用于追踪
+    const requestId =
+      (request as any).requestId ||
+      `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // 获取用户信息
+    const userId =
+      (request as any).user?.id || (request as any).user?.userId || null;
+    const userAgent = request.headers['user-agent'] || '';
+    const contentLength = request.headers['content-length'] || '0';
+
+    // 获取环境信息
+    const environment = process.env.NODE_ENV || 'development';
+
+    // 记录详细错误日志到modules日志文件
+    this.logger.error(
+      {
+        // 基础错误信息
+        message: result.message,
+        code: result.customCode || result.status,
+        exception: exception['name'] ?? 'UnknownException',
+        stack: result,
+        details: result.details,
+
+        // 请求信息
+        requestId,
+        method: request.method,
+        url: request.url,
+        path: request.url,
+        originalUrl: request.originalUrl,
+        protocol: request.protocol,
+        hostname: request.hostname,
+        subdomains: request.subdomains,
+        query: request.query,
+        params: request.params,
+
+        // 客户端信息
+        ip: request.ip,
+        userAgent,
+        contentLength,
+        headers: request.headers,
+
+        // 用户信息
+        userId,
+
+        // 性能信息
+        processingTime: `${processingTime}ms`,
+        timestamp: new Date().toISOString(),
+
+        // 环境信息
+        environment,
+        nodeVersion: process.version,
+        platform: process.platform,
+
+        // 请求体（敏感信息过滤）
+        body: this.sanitizeBody(request.body),
+      },
+      result.stack,
+      '全局过滤器',
+    );
 
     // 构建并发送响应
     const responseBody = {

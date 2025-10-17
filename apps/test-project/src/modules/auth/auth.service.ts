@@ -7,6 +7,7 @@ import { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '@/modules/user/user.service';
 import { RedisConfig } from '@/enums';
+import { LoginDto } from './dto/auth.dto';
 @Injectable()
 export class AuthService {
   constructor(
@@ -18,8 +19,8 @@ export class AuthService {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
-  async login(user: any) {
-    const payload = { username: user.username, sub: user.id };
+  async login(data: LoginDto, user: any) {
+    const payload = { username: data.username, sub: user.id };
 
     const token = await this.jwtService.signAsync(payload);
 
@@ -35,7 +36,7 @@ export class AuthService {
       code: 0,
       message: '登录成功',
       data: {
-        username: user.username,
+        username: data.username,
         token,
       },
     };
