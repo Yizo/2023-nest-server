@@ -14,8 +14,3 @@ export const DbConfigKey = {
   LOGGING: `${path}.logging`,
   LOGGER: `${path}.logger`,
 } as const;
-
-export enum SortOrder {
-  ASC = 'ASC',
-  DESC = 'DESC',
-}

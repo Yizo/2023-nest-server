@@ -3,17 +3,16 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
-  Query,
   Logger,
   ValidationPipe,
   UseGuards,
+  ParseIntPipe,
+  HttpStatus,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
-import { JwtAuthGuard } from '@/modules/auth/guard';
+// import { JwtAuthGuard } from '@/modules/auth/guard';
 import { ReqUser } from '@/decorators';
 import { User } from '@/modules/user/entities/user.entity';
 
@@ -21,7 +20,7 @@ import { User } from '@/modules/user/entities/user.entity';
   version: '1',
   path: 'users',
 })
-@UseGuards(JwtAuthGuard)
+// @UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -30,38 +29,95 @@ export class UserController {
 
   // 查询单个用户
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    console.log('id', id);
-    this.logger.log(id, 'users:Controller:findOne:id');
-    return this.userService.findOne(+id);
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    try {
+      const user = await this.userService.findUserById(id);
+      return {
+        code: 0,
+        message: '用户查询成功',
+        data: user,
+      };
+    } catch (error) {
+      return {
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || '查询失败',
+      };
+    }
   }
 
   // 查询所有用户
-  @Get()
-  findAll(@Query(ValidationPipe) body: FindAllBodyDto, @ReqUser() user: User) {
-    this.logger.log(user, 'users:Controller:findAll:req:user');
-    this.logger.log(body, 'users:Controller:findAll:query');
-    return this.userService.findAll(body);
+  @Post('list')
+  async findAll(@Body() body: FindAllBodyDto, @ReqUser() user: User) {
+    try {
+      const data: FindAllBodyDto = {
+        ...body,
+        page: body.page || 1,
+        pageSize: body.pageSize || 10,
+      };
+      const result = await this.userService.findUsers(data);
+      return {
+        ...result,
+        code: 0,
+        message: '用户查询成功',
+      };
+    } catch (error) {
+      return {
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || '查询失败',
+      };
+    }
   }
 
   // 新增用户
-  @Post()
-  create(@Body(ValidationPipe) createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
+  @Post('add')
+  async create(@Body() createUserDto: CreateUserDto) {
+    try {
+      const result = await this.userService.createUser(createUserDto);
+      return {
+        data: result,
+        code: 0,
+        message: '用户新增成功',
+      };
+    } catch (error) {
+      return {
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || '新增失败',
+      };
+    }
   }
 
   // 更新用户
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body(ValidationPipe) updateUserDto: UpdateUserDto,
-  ) {
-    return this.userService.update(+id, updateUserDto);
+  @Post('update')
+  async update(@Body() updateUserDto: UpdateUserDto) {
+    try {
+      const result = await this.userService.updateUser(updateUserDto);
+      return {
+        data: result,
+        code: 0,
+        message: '用户更新成功',
+      };
+    } catch (error) {
+      return {
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || '更新失败',
+      };
+    }
   }
 
   // 删除用户
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @Post(':id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    try {
+      await this.userService.removeUser(id);
+      return {
+        code: 0,
+        message: '用户删除成功',
+      };
+    } catch (error) {
+      return {
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || '删除失败',
+      };
+    }
   }
 }

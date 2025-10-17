@@ -15,6 +15,7 @@ export interface ApiResponse<T> {
   total?: number | null;
   page?: number | null;
   pageSize?: number | null;
+  totalPages?: number | null;
 }
 
 @Injectable()
@@ -76,6 +77,8 @@ export class ResponseInterceptor<T = Record<string, any>>
         } else {
           result.data = Object.keys(newData).length ? { ...newData } : null;
         }
+
+        this.logger?.log(result, '全局响应拦截器:result');
 
         return result;
       }),

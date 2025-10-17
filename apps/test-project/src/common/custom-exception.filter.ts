@@ -134,6 +134,8 @@ export class CustomExceptionFilter implements ExceptionFilter {
     // 处理异常
     const result = handler(exception);
 
+    this.logger?.log(result, '全局过滤器:result');
+
     // 记录日志
     // this.logger.error(
     //   {

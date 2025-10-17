@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { User } from '@/modules/user/entities/user.entity';
 
 export enum LogType {
   Create = 0,
@@ -39,4 +46,10 @@ export class Logs {
 
   @Column({ type: 'datetime', comment: '创建时间' })
   created_at: Date;
+
+  @ManyToOne(() => User, (user) => user.logs, {
+    createForeignKeyConstraints: false,
+  })
+  @JoinColumn({ name: 'user_id', referencedColumnName: 'id' })
+  user: User;
 }

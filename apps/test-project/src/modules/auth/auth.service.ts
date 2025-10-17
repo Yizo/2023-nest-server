@@ -14,7 +14,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly logger: Logger,
     private readonly configService: ConfigService,
-    // @InjectRedis() private readonly redis: Redis
+    // @InjectRedis() private readonly redis: Redis,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -27,12 +27,7 @@ export class AuthService {
     const expiration = this.configService.get(RedisConfig.EXPIRATION);
     this.logger.log(expiration, 'auth:service:login: expiration');
 
-    // await this.redis.set(
-    //  'user:' + user.id,
-    //   token,
-    //   'EX',
-    //   expiration,
-    // );
+    // await this.redis.set('user:' + user.id, token, 'EX', expiration);
 
     await this.cacheManager.set('user:' + user.id, token, expiration * 1000);
 

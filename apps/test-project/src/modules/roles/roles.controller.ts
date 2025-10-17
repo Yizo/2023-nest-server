@@ -2,12 +2,9 @@ import {
   Controller,
   Get,
   Post,
-  Put,
-  Delete,
   Body,
   Param,
   HttpStatus,
-  Query,
   ParseIntPipe,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
@@ -17,10 +14,11 @@ import { CreateRoleDto, UpdateRoleDto, FindAllRoleDto } from './dto/role-dto';
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
-  @Post()
+  // 创建角色
+  @Post('/create')
   async create(@Body() createRoleDto: CreateRoleDto) {
     try {
-      const role = await this.rolesService.create(createRoleDto);
+      const role = await this.rolesService.createRole(createRoleDto);
       return {
         code: 0,
         message: '角色创建成功',
@@ -34,18 +32,20 @@ export class RolesController {
     }
   }
 
-  @Get()
-  async findAll(@Query() query: FindAllRoleDto) {
+  // 查询角色列表
+  @Post('/list')
+  async findAll(@Body() query: FindAllRoleDto) {
     try {
-      const { page = 1, pageSize = 10 } = query;
-      const [roles, total] = await this.rolesService.findAll(page, pageSize);
+      const data: FindAllRoleDto = {
+        ...query,
+        page: query.page || 1,
+        pageSize: query.pageSize || 10,
+      };
+      const result = await this.rolesService.findAll(data);
       return {
+        ...result,
         code: 0,
         message: '角色查询成功',
-        data: roles,
-        total,
-        page,
-        pageSize,
       };
     } catch (error) {
       return {
@@ -79,19 +79,27 @@ export class RolesController {
     }
   }
 
-  @Put(':id')
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateRoleDto: UpdateRoleDto,
-  ) {
+  @Post('/remove/:id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
     try {
-      const role = await this.rolesService.update(id, updateRoleDto);
-      if (!role) {
-        return {
-          code: HttpStatus.NOT_FOUND,
-          message: '角色不存在',
-        };
-      }
+      await this.rolesService.removeRole(id);
+      return {
+        code: 0,
+        message: '角色删除成功',
+      };
+    } catch (error) {
+      return {
+        code: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || '角色删除失败',
+      };
+    }
+  }
+
+  // 更新角色
+  @Post('/update')
+  async update(@Body() updateRoleDto: UpdateRoleDto) {
+    try {
+      const role = await this.rolesService.updateRole(updateRoleDto);
       return {
         code: 0,
         message: '角色更新成功',
@@ -101,22 +109,6 @@ export class RolesController {
       return {
         code: HttpStatus.INTERNAL_SERVER_ERROR,
         message: error.message || '角色更新失败',
-      };
-    }
-  }
-
-  @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    try {
-      await this.rolesService.remove(id);
-      return {
-        code: 0,
-        message: '角色删除成功',
-      };
-    } catch (error) {
-      return {
-        code: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: error.message || '角色删除失败',
       };
     }
   }

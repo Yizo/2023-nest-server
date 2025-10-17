@@ -6,9 +6,13 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   Index,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
 
-export enum Gender {
+import { User } from '@/modules/user/entities/user.entity';
+
+export enum GenderType {
   Male = 0,
   Female = 1,
 }
@@ -18,22 +22,21 @@ export class Profile {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Index({ unique: true })
-  @Column({ type: 'bigint', comment: '关联的用户ID', nullable: false })
+  @Index()
+  @Column({ type: 'bigint', comment: '关联的用户ID' })
   user_id: number;
 
   @Column({
-    type: 'varchar',
+    type: 'bigint',
     unique: true,
     comment: '手机号唯一, 可选',
     nullable: true,
   })
-  phone: string | null;
+  phone: number | null;
 
   @Column({
     type: 'varchar',
     nullable: true,
-    unique: true,
     comment: '邮箱唯一，可选',
   })
   email: string | null;
@@ -50,7 +53,7 @@ export class Profile {
     comment: '性别, 可选, 0: 男, 1: 女',
     nullable: true,
   })
-  gender: Gender | null;
+  gender: GenderType | null;
 
   @Column({
     type: 'varchar',
@@ -72,4 +75,10 @@ export class Profile {
   /** 更新时间 */
   @UpdateDateColumn({ type: 'datetime', comment: '更新时间, 自动更新' })
   updated_at: Date;
+
+  @OneToOne(() => User, (user) => user.profile, {
+    createForeignKeyConstraints: false,
+  })
+  @JoinColumn({ name: 'user_id', referencedColumnName: 'id' })
+  user: User;
 }

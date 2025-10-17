@@ -1,3 +1,5 @@
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import KeyvRedis from '@keyv/redis';
 import {
   Module,
   NestModule,
@@ -6,21 +8,11 @@ import {
   Global,
 } from '@nestjs/common';
 import type { MiddlewareConsumer } from '@nestjs/common';
-import { APP_INTERCEPTOR, APP_PIPE, APP_FILTER } from '@nestjs/core';
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { APP_INTERCEPTOR, APP_PIPE, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-// import { RedisModule } from '@nestjs-modules/ioredis';
 import { CacheModule } from '@nestjs/cache-manager';
-import KeyvRedis from '@keyv/redis';
-import {
-  CustomExceptionFilter,
-  LoggerModule,
-  LoggerMiddleware,
-  ResponseInterceptor,
-  SessionModule,
-  SessionMiddleware,
-} from '@/common';
+import { Reflector } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from '../config/configuration';
@@ -29,7 +21,16 @@ import { DbConfigKey, RedisConfig } from '@/enums';
 import { ProfileModule } from '@/modules/profile/profile.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { LogsModule } from '@/modules/logs/logs.module';
+import { RolesModule } from '@/modules/roles/roles.module';
 import { CustomValidationPipe } from '@/pipes/validation.pipe';
+import { JwtAuthGuard } from '@/modules/auth/guard/jwt.guard';
+import {
+  CustomExceptionFilter,
+  LoggerModule,
+  LoggerMiddleware,
+  ResponseInterceptor,
+  SessionModule,
+} from '@/common';
 
 @Global()
 @Module({
@@ -59,22 +60,6 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
       }),
     }),
-    // RedisModule.forRootAsync({
-    //   imports: [ConfigModule],
-    //   inject: [ConfigService],
-    //   useFactory: (config: Record<string, any>) => {
-    //     const host = config.get(RedisConfig.HOST);
-    //     const port = config.get(RedisConfig.PORT);
-    //     const password = config.get(RedisConfig.PASSWORD);
-    //     return {
-    //       type: 'single',
-    //       url: `redis://${host}:${port}`,
-    //       options: {
-    //         password,
-    //       },
-    //     };
-    //   },
-    // }),
     CacheModule.registerAsync({
       inject: [ConfigService],
       isGlobal: true,
@@ -88,10 +73,9 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
           password: password.toString(),
         });
 
-
         store.on('error', (error) => {
-            console.log('KeyvRedis: error', error);
-        })
+          console.log('KeyvRedis: error', error);
+        });
 
         return {
           stores: [store],
@@ -103,10 +87,12 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
     AuthModule,
     LogsModule,
     SessionModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    // 全局拦截器
     {
       provide: APP_INTERCEPTOR,
       useClass: ResponseInterceptor,
@@ -127,12 +113,19 @@ import { CustomValidationPipe } from '@/pipes/validation.pipe';
       useFactory: (logger: Logger) => new CustomExceptionFilter(logger),
       inject: [WINSTON_MODULE_NEST_PROVIDER],
     },
+    {
+      provide: APP_GUARD,
+      useFactory: (reflector: Reflector) => {
+        return new JwtAuthGuard(reflector);
+      },
+      inject: [Reflector],
+    },
   ],
   exports: [Logger],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware, SessionMiddleware).forRoutes({
+    consumer.apply(LoggerMiddleware).forRoutes({
       path: '*',
       method: RequestMethod.ALL,
     });

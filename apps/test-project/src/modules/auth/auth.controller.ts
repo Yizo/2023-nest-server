@@ -7,8 +7,9 @@ import {
   Request,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/create-auth.dto';
-import { JwtAuthGuard, LocalAuthGuard } from './guard';
+import { LoginDto } from './dto/auth.dto';
+import { LocalAuthGuard } from './guard';
+import { Public } from '@/decorators';
 
 @Controller({
   version: '1',
@@ -21,12 +22,12 @@ export class AuthController {
   ) {}
 
   @UseGuards(LocalAuthGuard)
+  @Public()
   @Post('login')
   login(@Body() body: LoginDto, @Request() req) {
     return this.authService.login(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('logout')
   logout(@Body() body: { token: string }) {
     return this.authService.logout(body.token);

@@ -20,6 +20,8 @@ async function bootstrap() {
   // 获取实际分配的端口
   const server = app.getHttpServer();
   const actualPort = server.address().port;
+
+  console.log('actualPort', actualPort);
   console.log(
     `%c 🚀 Server ready at http://localhost:${actualPort}`,
     'color: red',

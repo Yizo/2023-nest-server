@@ -37,7 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * 在这里进行用户有效性验证
    */
   async validate(payload: any) {
-    const user = await this.userService.findOne(payload.sub);
+    const user = await this.userService.findOneById(payload.sub);
     if (!user) {
       throw new UnauthorizedException('用户不存在');
     }

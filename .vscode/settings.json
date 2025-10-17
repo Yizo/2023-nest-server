@@ -1,1 +1,5 @@
-{}
+{
+	"commentTranslate.hover.enabled": false,
+	"commentTranslate.source": "intellsmi.deepl-translate-deepl",
+	"commentTranslate.browse.mode": "inplace"
+}

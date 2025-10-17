@@ -1,100 +1,41 @@
 import {
-  IsString,
   IsInt,
-  IsEnum,
-  Min,
   IsOptional,
-  ValidateNested,
-  IsArray,
+  IsNotEmpty,
+  IsPhoneNumber,
+  IsEnum,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { SortOrder } from '@/enums';
-import { Transform } from 'class-transformer';
-
-export class FindAllBodyDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
+import { UserStatus } from '../entities/user.entity';
+import { PageDto } from '@/common';
+export class FindAllBodyDto extends PageDto {
   @IsOptional()
-  page: number;
+  username: string;
 
-  @Type(() => Number)
-  @IsInt()
+  @IsPhoneNumber('CN', { message: '手机号格式不正确' })
   @IsOptional()
-  pageSize: number;
+  phone: number | null;
 
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.toUpperCase() : value,
-  )
-  @IsEnum(SortOrder)
+  @IsEnum(UserStatus, { message: '状态必须是0或1' })
   @IsOptional()
-  sort: SortOrder;
-
-  @IsString()
-  @IsOptional()
-  gender: string;
-
-  @IsInt()
-  @IsOptional()
-  role: number;
-}
-
-class UpdateProfileDto {
-  @IsOptional()
-  @IsString()
-  gender: string;
-
-  @IsOptional()
-  @IsString()
-  photo: string;
-
-  @IsOptional()
-  @IsString()
-  address: string;
+  status: UserStatus;
 }
 
 export class CreateUserDto {
-  @IsString()
+  @IsNotEmpty({ message: '用户名不能为空' })
   username: string;
 
-  @IsString()
+  @IsNotEmpty({ message: '密码不能为空' })
   password: string;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => UpdateProfileDto)
-  profile?: UpdateProfileDto;
-
-  @IsOptional()
-  @IsArray()
-  @IsInt({ each: true })
-  roles?: number[];
-}
-
-class UpdateRoleDto {
-  @IsInt()
-  @IsOptional()
-  id: number;
-
-  @IsString()
-  @IsOptional()
-  name: string;
 }
 
 export class UpdateUserDto {
-  @IsString()
+  @IsInt({ message: 'ID必须是数字' })
+  @IsNotEmpty({ message: 'ID不能为空' })
+  id: number;
+
   @IsOptional()
   username: string;
 
-  @IsString()
   @IsOptional()
   password: string;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => UpdateProfileDto)
-  profile: UpdateProfileDto;
-
-  @IsOptional()
-  roles: UpdateRoleDto[];
 }
