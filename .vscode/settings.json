@@ -1,5 +1,5 @@
 {
-	"commentTranslate.hover.enabled": false,
-	"commentTranslate.source": "intellsmi.deepl-translate-deepl",
+	"commentTranslate.hover.enabled": true,
+	"commentTranslate.source": "DarkCWK.youdao-youdao",
 	"commentTranslate.browse.mode": "inplace"
 }

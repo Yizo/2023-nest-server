@@ -19,8 +19,8 @@ export class AuthService {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
-  async login(data: LoginDto, user: any) {
-    const payload = { username: data.username, sub: user.id };
+  async login(user: any) {
+    const payload = { username: user.username, sub: user.id };
 
     const token = await this.jwtService.signAsync(payload);
 
@@ -36,7 +36,7 @@ export class AuthService {
       code: 0,
       message: '登录成功',
       data: {
-        username: data.username,
+        username: user.username,
         token,
       },
     };
