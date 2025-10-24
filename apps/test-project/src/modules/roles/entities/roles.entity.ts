@@ -9,17 +9,7 @@ import {
 } from 'typeorm';
 
 import { User } from '@/modules/user/entities/user.entity';
-
-export enum RoleStatus {
-  Disabled = 0,
-  Enabled = 1,
-}
-
-export enum RoleType {
-  User = 0, // 普通用户
-  Admin = 1, // 管理员
-  SuperAdmin = 99, // 超级管理员
-}
+import { RoleStatus, RoleType } from '@/enums/role.enum';
 
 @Entity()
 export class Role {

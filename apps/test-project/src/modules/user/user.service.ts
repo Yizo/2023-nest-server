@@ -1,30 +1,17 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import { User, UserStatus } from './entities/user.entity';
 import { Profile } from '@/modules/profile/entities/profile.entity';
-import { Role } from '@/modules/roles/entities/roles.entity';
-import { RolesService } from '@/modules/roles/roles.service';
-import { ConfigService } from '@nestjs/config';
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
 import { paginate } from '@/common';
 
 @Injectable()
 export class UserService {
-  private defaultRole: Role | null = null;
-
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
-    private readonly rolesService: RolesService,
-    private readonly configService: ConfigService,
-    private readonly logger: Logger,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   /**

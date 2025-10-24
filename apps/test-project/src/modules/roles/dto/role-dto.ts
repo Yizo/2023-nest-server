@@ -5,7 +5,7 @@ import {
   MaxLength,
   IsEnum,
 } from 'class-validator';
-import { RoleStatus, RoleType } from '../entities/roles.entity';
+import { RoleStatus, RoleType } from '@/enums/role.enum';
 import { PageDto } from '@/common';
 
 export class CreateRoleDto {

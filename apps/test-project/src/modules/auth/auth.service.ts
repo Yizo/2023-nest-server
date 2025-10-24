@@ -7,7 +7,7 @@ import { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '@/modules/user/user.service';
 import { RedisConfig } from '@/enums';
-import { LoginDto } from './dto/auth.dto';
+
 @Injectable()
 export class AuthService {
   constructor(

@@ -6,7 +6,8 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtConfig } from '@/enums/jwt';
-import { JwtStrategy, LocalStrategy } from './strategy';
+import { JwtStrategy } from './jwt/jwt.strategy';
+import { LocalStrategy } from './local/local.strategy';
 import { CaslAbilityService } from './casl-ability.service';
 
 @Global()

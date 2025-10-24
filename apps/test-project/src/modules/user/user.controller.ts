@@ -5,8 +5,6 @@ import {
   Body,
   Param,
   Logger,
-  ValidationPipe,
-  UseGuards,
   ParseIntPipe,
   HttpStatus,
 } from '@nestjs/common';

@@ -23,7 +23,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
 import { LogsModule } from '@/modules/logs/logs.module';
 import { RolesModule } from '@/modules/roles/roles.module';
 import { CustomValidationPipe } from '@/pipes/validation.pipe';
-import { JwtAuthGuard } from '@/modules/auth/guard/jwt.guard';
+import { JwtAuthGuard } from '@/modules/auth/jwt/jwt.guard';
 import {
   CustomExceptionFilter,
   LoggerModule,

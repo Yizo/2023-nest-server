@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException, Query } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
-import { Role, RoleStatus, RoleType } from './entities/roles.entity';
+import { Repository } from 'typeorm';
+import { Role } from './entities/roles.entity';
+import { RoleType } from '@/enums/role.enum';
 import { CreateRoleDto, FindAllRoleDto, UpdateRoleDto } from './dto/role-dto';
 import { paginate, type PaginationResult } from '@/common';
 
