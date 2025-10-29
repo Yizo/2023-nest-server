@@ -1,8 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Role } from './entities/roles.entity';
-import { RoleType } from '@/enums/role.enum';
+import { Permission } from '@/modules/permissions/entities/permissions.entity';
+import { RoleStatus, RoleType } from '@/enums/role.enum';
 import { CreateRoleDto, FindAllRoleDto, UpdateRoleDto } from './dto/role-dto';
 import { paginate, type PaginationResult } from '@/common';
 
@@ -137,5 +138,109 @@ export class RolesService {
     }
 
     await this.roleRepository.softDelete(id);
+  }
+
+  // 为角色分配权限[覆盖]
+  async assignPermissions(
+    roleId: number,
+    permissionIds: number[],
+  ): Promise<Role> {
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId },
+      relations: ['permissions'],
+    });
+
+    if (!role) {
+      throw new BadRequestException('角色不存在');
+    }
+
+    // 获取权限列表
+    const permissions = await this.roleRepository.manager
+      .getRepository(Permission)
+      .find({
+        where: {
+          id: In(permissionIds),
+        },
+      });
+
+    // 分配权限
+    role.permissions = permissions;
+    return await this.roleRepository.save(role);
+  }
+
+  // 获取角色的所有权限
+  async getRolePermissions(roleId: number): Promise<Permission[]> {
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId },
+      relations: ['permissions'],
+    });
+
+    if (!role) {
+      throw new BadRequestException('角色不存在');
+    }
+
+    return role.permissions;
+  }
+
+  // 为角色添加权限[追加]
+  async addPermissionsToRole(
+    roleId: number,
+    permissionIds: number[],
+  ): Promise<Role> {
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId },
+      relations: ['permissions'],
+    });
+
+    if (!role) {
+      throw new BadRequestException('角色不存在');
+    }
+
+    // 获取要添加的权限
+    const permissions = await this.roleRepository.manager
+      .getRepository(Permission)
+      .find({
+        where: {
+          id: In(permissionIds),
+        },
+      });
+
+    // 合并现有权限和新权限
+    const existingPermissionIds = role.permissions.map((p) => p.id);
+    const newPermissions = permissions.filter(
+      (p) => !existingPermissionIds.includes(p.id),
+    );
+    role.permissions = [...role.permissions, ...newPermissions];
+
+    return await this.roleRepository.save(role);
+  }
+
+  // 从角色中移除权限
+  async removePermissionsFromRole(
+    roleId: number,
+    permissionIds: number[],
+  ): Promise<Role> {
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId },
+      relations: ['permissions'],
+    });
+
+    if (!role) {
+      throw new BadRequestException('角色不存在');
+    }
+
+    // 过滤掉要移除的权限
+    role.permissions = role.permissions.filter(
+      (permission) => !permissionIds.includes(permission.id),
+    );
+
+    return await this.roleRepository.save(role);
+  }
+
+  // 获取默认角色
+  async getDefaultRole(): Promise<Role> {
+    return await this.roleRepository.findOne({
+      where: { status: RoleStatus.Enabled, description: '默认用户角色' },
+    });
   }
 }

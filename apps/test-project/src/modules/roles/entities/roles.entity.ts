@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 
 import { User } from '@/modules/user/entities/user.entity';
+import { Permission } from '@/modules/permissions/entities/permissions.entity';
 import { RoleStatus, RoleType } from '@/enums/role.enum';
 
 @Entity()
@@ -33,7 +34,12 @@ export class Role {
   })
   status: RoleStatus;
 
-  @Column({ type: 'varchar', comment: '角色描述', nullable: true, default: '' })
+  @Column({
+    type: 'varchar',
+    comment: '角色描述',
+    nullable: true,
+    default: '默认用户角色',
+  })
   description: string;
 
   @DeleteDateColumn({ type: 'datetime', nullable: true, comment: '软删除时间' })
@@ -49,4 +55,9 @@ export class Role {
     createForeignKeyConstraints: false,
   })
   users: User[];
+
+  @ManyToMany(() => Permission, (permission) => permission.roles, {
+    createForeignKeyConstraints: false,
+  })
+  permissions: Permission[];
 }

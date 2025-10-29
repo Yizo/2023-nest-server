@@ -29,7 +29,7 @@ export class UserController {
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     try {
-      const user = await this.userService.findUserById(id);
+      const user = await this.userService.findOneById(id);
       return {
         code: 0,
         message: '用户查询成功',

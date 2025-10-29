@@ -22,6 +22,7 @@ import { ProfileModule } from '@/modules/profile/profile.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { LogsModule } from '@/modules/logs/logs.module';
 import { RolesModule } from '@/modules/roles/roles.module';
+import { PermissionsModule } from '@/modules/permissions/permissions.module';
 import { CustomValidationPipe } from '@/pipes/validation.pipe';
 import { JwtAuthGuard } from '@/modules/auth/jwt/jwt.guard';
 import {
@@ -88,6 +89,7 @@ import {
     LogsModule,
     SessionModule,
     RolesModule,
+    PermissionsModule,
   ],
   controllers: [AppController],
   providers: [

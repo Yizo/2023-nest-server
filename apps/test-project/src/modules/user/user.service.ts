@@ -79,9 +79,12 @@ export class UserService {
   }
 
   async findOneById(id: number): Promise<User | null> {
-    return await this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { id, status: UserStatus.Enabled },
+      relations: ['roles', 'roles.permissions', 'profile'],
     });
+    console.log('user', user);
+    return user;
   }
 
   async createUser(data: CreateUserDto): Promise<User> {
