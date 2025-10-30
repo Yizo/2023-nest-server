@@ -3,12 +3,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProfileService } from './profile.service';
 import { ProfileController } from './profile.controller';
 import { Profile } from './entities/profile.entity';
+import { QueryBuilderModule } from '@/common/query-builder';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Profile]), // 注册 Repository 实体
+    QueryBuilderModule,
   ],
   controllers: [ProfileController],
   providers: [ProfileService],
+  exports: [ProfileService],
 })
 export class ProfileModule {}

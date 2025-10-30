@@ -1,243 +1,345 @@
-import { Injectable, Logger, HttpStatus, OnModuleInit, Inject } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { hash } from 'bcrypt';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-import { User } from './entities/user.entity';
-import { Role } from '@/modules/roles/roles.entity'; // 引入 Role 实体
-import { RolesService } from '@/modules/roles/roles.service'; // 引入 RolesService
-import { ConfigService } from '@nestjs/config'; // 引入 ConfigService
+import { Repository, DataSource } from 'typeorm';
+import { RoleType } from '@/enums/role.enum';
+import { User, UserStatus } from './entities/user.entity';
+import { Profile } from '@/modules/profile/entities/profile.entity';
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
+import { QueryBuilderFactory, QueryBuilderHelper } from '@/common';
+import { RolesService } from '@/modules/roles/roles.service';
+import { ProfileService } from '@/modules/profile/profile.service';
 
 @Injectable()
-export class UserService implements OnModuleInit {
-  private defaultRole: Role | null = null;
+export class UserService {
+  private userQueryBuilder: QueryBuilderHelper<User>;
 
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    private readonly queryBuilderFactory: QueryBuilderFactory,
     private readonly rolesService: RolesService,
-    private readonly configService: ConfigService,
-    private readonly logger: Logger,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-  ) {}
-
-  async onModuleInit() {
-    // 应用启动时创建默认角色
-    this.defaultRole = await this.createDefaultRole();
+    private readonly profileService: ProfileService,
+  ) {
+    this.userQueryBuilder = this.queryBuilderFactory.createFromRepository(
+      this.userRepository,
+    );
   }
 
-  private async createDefaultRole(): Promise<Role | null> {
-    // 从配置文件中获取默认角色ID或名称
-    const defaultRoleId = this.configService.get<number>('defaultRole.id');
-    const defaultRoleName =
-      this.configService.get<string>('defaultRole.name') || '普通用户';
-
-    // 首先尝试通过ID查找默认角色
-    if (defaultRoleId) {
-      const role = await this.rolesService.findOne(defaultRoleId);
-      if (role) {
-        return role;
-      }
-    }
-
-    // 如果通过ID找不到，则尝试通过名称查找
-    let role = await this.rolesService.findByName(defaultRoleName);
-    if (!role) {
-      // 如果都找不到，则创建默认角色
-      try {
-        role = await this.rolesService.create({ name: defaultRoleName });
-      } catch (error) {
-        // 如果创建失败，则查找第一个可用角色
-        const roles = await this.rolesService.findAll(1, 1);
-        if (roles[0].length > 0) {
-          role = roles[0][0];
-        }
-      }
-    }
-    return role;
-  }
-
-  async create(createUserDto: CreateUserDto) {
-    // 处理角色关联
-    let roles: Role[] = [];
-    if (createUserDto.roles && createUserDto.roles.length > 0) {
-      roles = await this.roleRepository.findBy({ id: In(createUserDto.roles) });
-    } else {
-      // 如果没有指定角色，则分配默认角色
-      if (this.defaultRole) {
-        roles = [this.defaultRole];
-      }
-    }
-
-    const hashedPassword = await hash(createUserDto.password, 10);
-    createUserDto.password = hashedPassword;
-
-    const newUser = this.userRepository.create({
-      ...createUserDto,
-      roles,
+  /**
+   * 查询基本信息（包含Profile关联信息）
+   */
+  async findUserById(id: number): Promise<User | null> {
+    const result = await this.userQueryBuilder.findOne({
+      joins: [
+        {
+          property: 'profile',
+          alias: 'p',
+          type: 'leftJoinAndSelect',
+        },
+      ],
+      conditions: [
+        {
+          field: 'id',
+          operator: 'eq',
+          value: id,
+        },
+      ],
     });
-
-    await this.userRepository.save(newUser);
-    return {
-      code: 0,
-      message: '新增成功',
-    };
+    console.log('findUserById result:', JSON.stringify(result, null, 2));
+    return result;
   }
+  /**
+   * 分页查询用户列表（包含Profile关联信息）
+   */
+  async findUsers(data: FindAllBodyDto) {
+    const { page = 1, pageSize = 10, phone, status, username } = data;
 
-  async findAll(body: FindAllBodyDto) {
-    const { page = 1, pageSize = 10, sort = 'ASC', gender, role } = body;
-    const query = this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.profile', 'profile')
-      .leftJoinAndSelect('user.roles', 'roles')
-      .select([
-        'user.id',
-        'user.username',
-        'profile.id',
-        'profile.gender',
-        'profile.photo',
-        'profile.address',
-        'roles.id',
-        'roles.name',
-      ]);
-
-    if (gender) {
-      query.andWhere('profile.gender = :gender', { gender });
-    }
-    if (role) {
-      query.andWhere('user.role = :role', { role });
-    }
-    if (sort) {
-      query.orderBy('user.id', sort === 'ASC' ? 'ASC' : 'DESC');
-    }
-
-    try {
-      const [data, total] = await query
-        .skip((page - 1) * pageSize)
-        .take(pageSize)
-        .getManyAndCount();
-
-      // 对查出来的数据进行重命名处理
-      const result = data.map((item) => {
-        if (item.profile) {
-          const { profile, ...user } = item;
-          return {
-            ...user,
-            profile,
-          };
-        }
-        return item;
+    // 构建查询条件
+    const conditions = [];
+    if (username) {
+      conditions.push({
+        field: 'username',
+        operator: 'like',
+        value: username,
       });
-
-      return {
-        message: '查询成功',
-        data: result,
-        total,
-        page,
-        pageSize,
-      };
-    } catch (error) {
-      this.logger.error(error, 'users:Service:findAll:catch');
-      return {
-        code: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: error.message || '查询用户失败',
-        data: [],
-      };
     }
-  }
-
-  async findOne(id: number): Promise<User | null> {
-    try {
-      const value = await this.cacheManager.get('user:' + id);
-      this.logger.log(value, 'users:Service:findOne:catch');
-      return await this.userRepository.findOne({
-        where: { id },
-        relations: ['profile', 'roles'],
+    if (phone) {
+      conditions.push({
+        field: 'p.phone',
+        operator: 'eq',
+        value: phone,
       });
-    } catch (error) {
-      return null;
     }
-  }
+    if (status !== undefined) {
+      conditions.push({
+        field: 'status',
+        operator: 'eq',
+        value: status,
+      });
+    }
 
-  // 通过用户id+密码返回密码+用户信息
-  async findOneByUserNameAndPassword(userName: string, password: string) {
-    const user = await this.userRepository.findOne({
-      where: { username: userName },
-      relations: ['profile', 'roles'],
-      select: {
-        id: true,
-        username: true,
-        password: true,
+    return await this.userQueryBuilder.findPaginated(
+      {
+        joins: [
+          {
+            property: 'profile',
+            alias: 'p',
+            type: 'leftJoinAndSelect',
+          },
+          {
+            property: 'roles',
+            alias: 'r',
+            type: 'leftJoinAndSelect',
+          },
+        ],
+        conditions,
+        orderBy: [
+          {
+            field: 'created_at',
+            direction: 'DESC',
+          },
+        ],
       },
-    });
-    if (user && password === user.password) {
-      return user;
-    }
-    return null;
+      page,
+      pageSize,
+      true,
+    );
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  /**
+   * 根据用户名和密码查询用户, 登录用
+   */
+  async findOneByUserNameAndPassword(
+    username: string,
+    password: string,
+  ): Promise<User | null> {
     const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['profile', 'roles'],
+      where: {
+        username,
+      },
+      select: ['id', 'username', 'password', 'status', 'deleted_at'],
+      withDeleted: true,
+    });
+    console.log('findOneByUserNameAndPassword user:', user, {
+      username,
+      password,
     });
     if (!user) {
-      return {
-        code: HttpStatus.NOT_FOUND,
-        message: '用户不存在',
-      };
+      throw new BadRequestException('用户不存在');
     }
-
-    // 处理角色关联
-    if (updateUserDto.roles && updateUserDto.roles.length > 0) {
-      const roleIds = updateUserDto.roles.map((role: { id: number } | number) =>
-        typeof role === 'object' ? role.id : role,
-      );
-      const roles = await this.roleRepository.findBy({ id: In(roleIds) });
-      user.roles = roles;
+    if (user.password !== password + '') {
+      throw new BadRequestException('账号或密码错误');
     }
-
-    // 使用 merge 合并主表字段
-    this.userRepository.merge(user, updateUserDto);
-
-    // 合并 profile
-    if (updateUserDto.profile) {
-      this.userRepository.merge(user, { profile: updateUserDto.profile });
+    if (user.status !== UserStatus.Enabled) {
+      throw new BadRequestException('用户已禁用');
     }
-
-    await this.userRepository.save(user); // 级联保存
-
-    return {
-      code: 0,
-      message: '更新成功',
-    };
+    if (user.deleted_at) {
+      throw new BadRequestException('用户已删除，请联系管理员');
+    }
+    return user;
   }
 
-  async remove(id: number) {
+  /**
+   * 根据ID查询用户详情（包含角色、权限和Profile关联信息）
+   */
+  async findOneById(id: number): Promise<User | null> {
+    return await this.userRepository.findOne({
+      where: { id, status: UserStatus.Enabled },
+      relations: ['roles', 'roles.permissions', 'profile'],
+    });
+  }
+
+  /**
+   * 创建用户（级联创建）
+   * 创建用户时自动执行以下操作：
+   * 1. 创建用户基本信息
+   * 2. 创建用户Profile（如果需要）
+   * 3. 分配默认角色
+   *
+   * @param data 用户创建数据
+   * @returns 创建的用户完整信息（包含Profile和角色）
+   */
+  async createUser(data: CreateUserDto): Promise<User> {
+    // 验证用户名是否已存在
+    const existingUser = await this.userRepository.findOne({
+      where: { username: data.username },
+      withDeleted: true, // 包括已软删除的用户
+    });
+
+    if (existingUser) {
+      if (existingUser.deleted_at) {
+        throw new BadRequestException(
+          '用户名已存在但已被删除，请联系管理员恢复',
+        );
+      } else {
+        throw new BadRequestException('用户名已存在');
+      }
+    }
+
+    // 使用事务确保数据一致性
+    return await this.dataSource.transaction(async (manager) => {
+      try {
+        // 1. 创建用户基本信息
+        const user = manager.create(User, {
+          username: data.username,
+          password: data.password,
+          status: UserStatus.Enabled,
+        });
+        const savedUser = await manager.save(User, user);
+
+        // 2. 创建用户Profile（可选，通过单独的API创建）
+        // 这里暂时不自动创建Profile，让前端通过单独的API创建
+
+        // 3. 分配默认角色
+        try {
+          const defaultRole = await this.rolesService.getDefaultRole();
+          if (defaultRole) {
+            // 创建用户-角色关联
+            await manager
+              .createQueryBuilder()
+              .insert()
+              .into('user_role')
+              .values({
+                user_id: savedUser.id,
+                role_id: defaultRole.id,
+              })
+              .execute();
+          }
+        } catch (roleError) {
+          // 如果默认角色不存在，记录警告但不影响用户创建
+          console.warn('默认角色不存在，跳过角色分配:', roleError.message);
+        }
+
+        // 4. 返回完整的用户信息
+        return await manager.findOne(User, {
+          where: { id: savedUser.id },
+          relations: ['profile'],
+        });
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+        throw new BadRequestException(`创建用户失败: ${error.message}`);
+      }
+    });
+  }
+
+  /**
+   * 更新用户（级联更新）
+   * 更新用户信息，包含必要的验证和关联关系处理
+   *
+   * @param data 用户更新数据
+   * @returns 更新后的用户完整信息
+   */
+  async updateUser(data: UpdateUserDto): Promise<User> {
+    const { id, username, password } = data;
+
+    // 验证用户存在
+    const existingUser = await this.userRepository.findOne({
+      where: { id },
+    });
+
+    if (!existingUser) {
+      throw new BadRequestException('用户不存在');
+    }
+
+    // 如果更新用户名，检查是否与其他用户冲突
+    if (username && username !== existingUser.username) {
+      const userWithSameUsername = await this.userRepository.findOne({
+        where: { username },
+        withDeleted: true,
+      });
+
+      if (userWithSameUsername && userWithSameUsername.id !== id) {
+        if (userWithSameUsername.deleted_at) {
+          throw new BadRequestException(
+            '用户名已存在但已被删除，请联系管理员恢复',
+          );
+        } else {
+          throw new BadRequestException('用户名已存在');
+        }
+      }
+    }
+
+    // 构建更新数据
+    const updateData: Partial<User> = {};
+    if (username !== undefined) updateData.username = username;
+    if (password !== undefined) updateData.password = password;
+
+    // 如果没有需要更新的字段，返回原数据
+    if (Object.keys(updateData).length === 0) {
+      return await this.userRepository.findOne({
+        where: { id },
+        relations: ['profile'],
+      });
+    }
+
+    // 更新用户基本信息
+    await this.userRepository.update(id, updateData);
+
+    // 返回更新后的完整用户信息
+    return await this.userRepository.findOne({
+      where: { id },
+      relations: ['profile'],
+    });
+  }
+
+  /**
+   * 删除用户（级联删除）
+   * 软删除用户时需要级联处理相关的关联关系：
+   * 1. 删除用户与角色的关联关系（user_role表）
+   * 2. 软删除用户资料 Profile
+   * 3. 软删除用户
+   * 4. 如果用户是超级管理员，则不能删除
+   *
+   * @param id 用户ID
+   */
+  async removeUser(id: number): Promise<void> {
+    // 验证用户存在
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['roles'],
     });
+
     if (!user) {
-      return {
-        code: HttpStatus.NOT_FOUND,
-        message: '用户不存在',
-      };
+      throw new BadRequestException('用户不存在');
     }
 
-    // 先解除用户与角色的关联
-    user.roles = [];
-    await this.userRepository.save(user);
+    if (user.roles.length) {
+      if (user.roles.some((role) => role.code === RoleType.SuperAdmin)) {
+        throw new BadRequestException('超级管理员用户不能删除');
+      }
+    }
 
-    // 再删除用户
-    await this.userRepository.remove(user);
-    return {
-      code: 0,
-      message: '删除成功',
-    };
+    await this.dataSource.transaction(async (manager) => {
+      try {
+        // 1. 删除用户与角色的关联关系
+        await manager
+          .createQueryBuilder()
+          .delete()
+          .from('user_role')
+          .where('user_id = :id', { id })
+          .execute();
+
+        // 2. 软删除用户资料 Profile
+        await manager
+          .createQueryBuilder()
+          .update(Profile)
+          .set({ deleted_at: new Date() })
+          .where('user_id = :id', { id })
+          .execute();
+
+        // 3. 软删除用户
+        await manager
+          .createQueryBuilder()
+          .softDelete()
+          .from(User)
+          .where('id = :id', { id })
+          .execute();
+      } catch (error) {
+        throw new BadRequestException(`删除用户失败: ${error.message}`);
+      }
+    });
   }
 }

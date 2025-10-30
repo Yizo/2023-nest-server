@@ -2,29 +2,83 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+  Index,
   OneToOne,
   JoinColumn,
 } from 'typeorm';
+
 import { User } from '@/modules/user/entities/user.entity';
+
+export enum GenderType {
+  Male = 0,
+  Female = 1,
+}
 
 @Entity()
 export class Profile {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  gender: string;
+  @Index()
+  @Column({ type: 'bigint', comment: '关联的用户ID' })
+  user_id: number;
 
-  @Column()
-  photo: string;
+  @Column({
+    type: 'bigint',
+    unique: true,
+    comment: '手机号唯一, 可选',
+    nullable: true,
+  })
+  phone: number | null;
 
-  @Column()
-  address: string;
+  @Column({
+    type: 'varchar',
+    nullable: true,
+    comment: '邮箱唯一，可选',
+  })
+  email: string | null;
+
+  @Column({
+    type: 'varchar',
+    comment: '地址, 可选',
+    nullable: true,
+  })
+  address: string | null;
+
+  @Column({
+    type: 'varchar',
+    comment: '性别, 可选, 0: 男, 1: 女',
+    nullable: true,
+  })
+  gender: GenderType | null;
+
+  @Column({
+    type: 'varchar',
+    comment: '头像, 可选',
+    nullable: true,
+  })
+  avatar: string | null;
+
+  /**
+   * 软删除时间
+   *  */
+  @DeleteDateColumn({ type: 'datetime', nullable: true, comment: '软删除时间' })
+  deleted_at: Date | null;
+
+  /** 创建时间 */
+  @CreateDateColumn({ type: 'datetime', comment: '创建时间, 自动生成' })
+  created_at: Date;
+
+  /** 更新时间 */
+  @UpdateDateColumn({ type: 'datetime', comment: '更新时间, 自动更新' })
+  updated_at: Date;
 
   @OneToOne(() => User, (user) => user.profile, {
-    onDelete: 'CASCADE', // 删除 User 时级联删除 Profile
-    onUpdate: 'CASCADE', // 更新 User 时级联更新 Profile
+    createForeignKeyConstraints: false,
   })
-  @JoinColumn()
+  @JoinColumn({ name: 'user_id', referencedColumnName: 'id' })
   user: User;
 }
