@@ -177,7 +177,7 @@ export class CustomExceptionFilter implements ExceptionFilter {
     // 生成请求ID用于追踪
     const requestId =
       (request as any).requestId ||
-      `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      `req_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
     // 获取用户信息
     const userId =

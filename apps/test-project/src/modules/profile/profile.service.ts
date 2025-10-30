@@ -7,52 +7,66 @@ import {
   UpdateProfileDto,
   FindAllProfileDto,
 } from './dto/profile.dto';
-import { paginate } from '@/common';
+import { QueryBuilderFactory, QueryBuilderHelper } from '@/common';
 
 @Injectable()
 export class ProfileService {
+  private profileQueryBuilder: QueryBuilderHelper<Profile>;
+
   constructor(
     @InjectRepository(Profile)
     private readonly proFileRepository: Repository<Profile>,
-  ) {}
-
-  async findOne(id: number) {
-    const profile = await this.proFileRepository.findOne({
-      where: { id },
-      select: [
-        'id',
-        'gender',
-        'phone',
-        'email',
-        'address',
-        'avatar',
-        'created_at',
-        'updated_at',
-      ],
-    });
-    return profile;
+    private readonly queryBuilderFactory: QueryBuilderFactory,
+  ) {
+    this.profileQueryBuilder = this.queryBuilderFactory.createFromRepository(
+      this.proFileRepository,
+    );
   }
 
+  /**
+   * 根据ID查询Profile
+   */
+  async findOne(id: number) {
+    return await this.profileQueryBuilder.findOne({
+      conditions: [
+        {
+          field: 'id',
+          operator: 'eq',
+          value: id,
+        },
+      ],
+    });
+  }
+
+  /**
+   * 分页查询Profile列表
+   */
   async findAll(data: FindAllProfileDto) {
-    const { page, pageSize, sort, gender } = data;
-    const query = this.proFileRepository.createQueryBuilder('profile');
-    if (gender) {
-      query.where('profile.gender = :gender', { gender });
+    const { page = 1, pageSize = 10, sort = 'DESC', gender } = data;
+
+    // 构建查询条件
+    const conditions = [];
+    if (gender !== undefined) {
+      conditions.push({
+        field: 'gender',
+        operator: 'eq',
+        value: gender,
+      });
     }
-    if (sort) {
-      query.orderBy('profile.created_at', sort);
-    }
-    query.select([
-      'profile.id',
-      'profile.gender',
-      'profile.phone',
-      'profile.email',
-      'profile.address',
-      'profile.avatar',
-      'profile.created_at',
-      'profile.updated_at',
-    ]);
-    return await paginate<Profile>(query, page, pageSize);
+
+    return await this.profileQueryBuilder.findPaginated(
+      {
+        conditions,
+        orderBy: [
+          {
+            field: 'created_at',
+            direction: sort.toUpperCase() as 'ASC' | 'DESC',
+          },
+        ],
+      },
+      page,
+      pageSize,
+    );
   }
 
   /**
@@ -62,18 +76,33 @@ export class ProfileService {
     userId?: number | null;
     phone?: number | null;
   }) {
-    if (!data.userId && !data.phone) {
+    const { userId, phone } = data;
+    if (!userId && !phone) {
       return null;
     }
-    const query = this.proFileRepository.createQueryBuilder('profile');
-    const { userId, phone } = data;
+
+    // 构建OR条件
+    const conditions = [];
     if (phone) {
-      query.orWhere('profile.phone = :phone', { phone });
+      conditions.push({
+        field: 'phone',
+        operator: 'eq',
+        value: phone,
+        or: true,
+      });
     }
     if (userId) {
-      query.orWhere('profile.user_id = :userId', { userId });
+      conditions.push({
+        field: 'user_id',
+        operator: 'eq',
+        value: userId,
+        or: true,
+      });
     }
-    return query.getOne();
+
+    return await this.profileQueryBuilder.findOne({
+      conditions,
+    });
   }
 
   async createProfile(createProfileDto: CreateProfileDto) {

@@ -5,9 +5,10 @@ import { Permission } from './entities/permissions.entity';
 import { PermissionsService } from './permissions.service';
 import { PermissionsController } from './permissions.controller';
 import { CaslAbilityFactory } from './casl-ability.factory';
+import { QueryBuilderModule } from '@/common/query-builder';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Permission])],
+  imports: [TypeOrmModule.forFeature([Permission]), QueryBuilderModule],
   controllers: [PermissionsController],
   providers: [PermissionsService, CaslAbilityFactory],
   exports: [PermissionsService, CaslAbilityFactory],

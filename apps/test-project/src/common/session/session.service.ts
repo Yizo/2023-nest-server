@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SessionOptions } from 'express-session';
-import { ModeConfig, SessionConfig } from 'src/enums';
+import { ModeConfig, SessionConfig } from '@/enums';
 @Injectable()
 export class SessionService {
   constructor(private readonly configService: ConfigService) {}

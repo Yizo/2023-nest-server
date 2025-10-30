@@ -10,7 +10,7 @@ export class LoggerMiddleware implements NestMiddleware {
     (req as any).startTime = Date.now();
     (req as any).requestId = `req_${Date.now()}_${Math.random()
       .toString(36)
-      .substr(2, 9)}`;
+      .slice(2, 11)}`;
 
     // 添加请求ID到响应头，便于客户端追踪
     res.setHeader('X-Request-ID', (req as any).requestId);

@@ -9,12 +9,14 @@ import { ProfileModule } from '../profile/profile.module'; // 引入 ProfileModu
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { UserMiddleware } from './user.middleware';
+import { QueryBuilderModule } from '@/common/query-builder';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Profile, Role]),
     RolesModule,
     ProfileModule,
+    QueryBuilderModule,
   ],
   controllers: [UserController],
   providers: [UserService],

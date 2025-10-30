@@ -41,12 +41,6 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     // 1. 调用业务服务进行用户验证
     // 2. 成功：返回用户信息，会被添加到request.user
     // 3. 失败：抛出异常，会被Guard捕获并处理
-    const user = await this.authService.validateUser(username, password);
-    if (!user) {
-      throw new UnauthorizedException({
-        message: '账号或密码错误',
-      });
-    }
-    return user;
+    return await this.authService.validateUser(username, password);
   }
 }
