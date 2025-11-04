@@ -8,3 +8,4 @@ export * from './mode.enum';
 export * from './redis';
 export * from './sort.enum';
 export * from './permission.enum';
+export * from './policy.enum';

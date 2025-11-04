@@ -6,14 +6,6 @@ export enum PermissionType {
   All = 99, // 所有权限
 }
 
-export enum PermissionAction {
-  Manage = 'manage', // 管理权限（包含所有操作）
-  Create = 'create',
-  Read = 'read',
-  Update = 'update',
-  Delete = 'delete',
-}
-
 export const PERMISSIONS_KEY = 'permissions';
 
 export const SUBJECT_CONFIG = {

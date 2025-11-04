@@ -1,6 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
 import type { AnyMongoAbility, InferSubjects } from '@casl/ability';
-import { PermissionAction, CHECK_POLICIES_KEY } from '@/enums';
+import { PolicyAction, CHECK_POLICIES_KEY } from '@/enums';
 
 type PoliciesHandler = (ability: AnyMongoAbility) => boolean;
 
@@ -15,7 +15,7 @@ export const checkPolicies = (...handler: PoliciesHandler[]) => {
 
 // @Can -> Action, Subject, Conditions
 export const can = (
-  action: PermissionAction,
+  action: PolicyAction,
   subject: InferSubjects<any>,
   conditions?: any,
 ) => {
@@ -26,7 +26,7 @@ export const can = (
 
 // @Cannot -> Action, Subject, Conditions
 export const cannot = (
-  action: PermissionAction,
+  action: PolicyAction,
   subject: InferSubjects<any>,
   conditions?: any,
 ) => {

@@ -1,50 +1,69 @@
-# docker-compose.yml 配置解析
-version: '3.8'  # Docker Compose语法版本（3.x系列支持单节点部署）
+version: '3.9' # Docker Compose 文件版本，3.9 是较新的稳定版本
 
-services:
-  db:  # MySQL数据库服务
-    image: mysql:8.0.31  # 官方镜像（默认latest标签，生产建议指定版本）
-    command: --default-authentication-plugin=mysql_native_password
-    # ↑ 强制使用旧版认证插件（兼容性配置，但存在安全隐患）
-    # 安全警告：此插件不支持SHA-256加密，建议仅用于测试环境
-    # 升级指南：https://dev.mysql.com/doc/refman/8.0/en/upgrading-from-previous-series.html
-    restart: always  # 崩溃后自动重启（避免服务不可用）
+services: # 定义多个服务（NestJS, MySQL, Redis）
+  app: # 你的 NestJS 应用服务
+    build: # 指定如何构建该服务的镜像
+      context: . # 构建上下文目录，"." 表示当前目录
+      dockerfile: Dockerfile # 指定 Dockerfile 文件路径
+    container_name: nestjs_app # 容器的名称（方便调试和管理）
+    restart: unless-stopped # 如果容器崩溃，自动重启（生产环境推荐）
+    ports:
+      - '${APP_PORT}:3000' # 映射宿主机端口到容器端口
+    env_file:
+      - .env # 引入外部环境变量配置文件
     environment:
-      MYSQL_DATABASE: dev
-      MYSQL_ROOT_PASSWORD: example  # root超级用户密码（必须修改！）
-      MYSQL_USER: app_user     # 创建非 root 用户
-      MYSQL_PASSWORD: app_password     # 非 root 用户密码
-    ports:
-      - "3309:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - app_net
-    healthcheck: # 健康检查（可选）
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-
-  adminer:  # 轻量级数据库管理面板
-    image: adminer  # 官方镜像（支持MySQL/PostgreSQL等多种数据库）
-    restart: always  # 与db服务保持同步重启
-    ports:
-      - "8090:8080"  # 访问地址：http://localhost:8090
-      # 登录参数：
-      # 系统: MySQL
-      # 服务器: db（容器服务名）
-      # 用户名: root
-      # 密码: example
-      # 数据库: 留空
+      # 额外定义环境变量（如果想覆盖 .env）
+      - NODE_ENV=production
     depends_on:
-      - db
+      - mysql # 在 mysql 启动完成后再启动 app
+      - redis # 同理，等待 redis 启动
     networks:
-      - app_net
+      - backend # 连接到自定义网络 backend
 
+  mysql: # MySQL 数据库服务
+    image: mysql:8.0 # 使用官方 MySQL 8.0 镜像
+    container_name: mysql_db # 容器名
+    restart: unless-stopped # 崩溃自动重启
+    environment:
+      # 从 .env 文件中读取配置（Compose 会自动替换）
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - '${MYSQL_PORT}:3306' # 映射端口，允许外部连接数据库
+    volumes:
+      - mysql_data:/var/lib/mysql # 持久化存储数据库数据
+    command:
+      # 优化 MySQL 的字符集和连接参数，防止中文乱码
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - backend # 同样连接到 backend 网络
+
+  redis:
+    image: redis:7.0-alpine # 使用官方 Redis 7 轻量版镜像
+    container_name: redis_cache
+    restart: unless-stopped
+    command: >
+      redis-server --requirepass ${REDIS_PASSWORD}
+      # 设置 Redis 密码，防止被外部未授权访问
+    ports:
+      - '${REDIS_PORT}:6379' # 映射端口到宿主机
+    volumes:
+      - redis_data:/data # 持久化 Redis 数据
+    networks:
+      - backend
+
+# -----------------------
+# 定义数据卷（用于持久化）
+# -----------------------
 volumes:
-  mysql_data:
+  mysql_data: # MySQL 数据卷，用于存储数据库文件
+  redis_data: # Redis 数据卷，用于缓存持久化
 
+# -----------------------
+# 定义自定义网络
+# -----------------------
 networks:
-    app_net:
-      driver: bridge
+  backend:
+    driver: bridge # bridge 模式允许容器间相互访问

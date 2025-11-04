@@ -12,7 +12,7 @@ import { RolesService } from './roles.service';
 import { CreateRoleDto, UpdateRoleDto, FindAllRoleDto } from './dto/role-dto';
 import { PermissionsGuard } from '@/modules/permissions/permissions.guard';
 import { Permissions } from '@/modules/permissions/permissions.decorator';
-import { PermissionAction } from '@/enums';
+import { PolicyAction } from '@/enums';
 
 @Controller('roles')
 export class RolesController {
@@ -20,7 +20,7 @@ export class RolesController {
 
   // 创建角色
   @UseGuards(PermissionsGuard)
-  @Permissions({ action: PermissionAction.Create, subject: 'Role' })
+  @Permissions({ action: PolicyAction.Create, subject: 'Role' })
   @Post('/create')
   async create(@Body() createRoleDto: CreateRoleDto) {
     try {

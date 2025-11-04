@@ -1,0 +1,40 @@
+# Dockerfile
+# -----------------------
+# 阶段1：构建阶段（安装依赖并打包）
+# -----------------------
+    FROM node:18-alpine AS builder
+    # 使用轻量版 Node 18 镜像
+
+    WORKDIR /app
+    # 设置容器内的工作目录
+
+    COPY ../package*.json ./
+    # 拷贝依赖文件，用于 npm install
+
+    RUN npm install --production=false
+    # 安装所有依赖（包含 devDependencies，因为要构建）
+
+    COPY .. .
+    # 拷贝项目源码到容器
+
+    RUN npm run build
+    # 构建 NestJS 项目（输出到 dist/）
+
+    # -----------------------
+    # 阶段2：运行阶段（仅运行编译后的代码）
+    # -----------------------
+    FROM node:18-alpine
+    WORKDIR /app
+
+    COPY --from=builder /app/package*.json ./
+    RUN npm install --production
+    # 仅安装生产依赖，减小镜像体积
+
+    COPY --from=builder /app/dist ./dist
+    # 拷贝编译好的 dist 文件
+
+    EXPOSE 3000
+    # 暴露端口，供外部访问 NestJS
+
+    CMD ["node", "dist/main.js"]
+    # 启动应用

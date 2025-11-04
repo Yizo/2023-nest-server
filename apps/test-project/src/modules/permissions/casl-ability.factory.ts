@@ -6,11 +6,11 @@ import {
   createMongoAbility,
 } from '@casl/ability';
 import { MongoAbility } from '@casl/ability';
-import { PermissionAction, Subjects, RoleType, PermissionType } from '@/enums';
+import { PolicyAction, Subjects, RoleType, PermissionType } from '@/enums';
 import { User } from '@/modules/user/entities/user.entity';
 
 // 定义能力类型
-export type AppAbility = MongoAbility<[PermissionAction, Subjects]>;
+export type AppAbility = MongoAbility<[PolicyAction, Subjects]>;
 export const AppAbility = PureAbility;
 
 @Injectable()
@@ -21,7 +21,7 @@ export class CaslAbilityFactory {
 
     // 超级管理员拥有所有权限
     if (user.roles.some((role) => role.code === RoleType.SuperAdmin)) {
-      can(PermissionAction.Manage, 'all');
+      can(PolicyAction.Manage, 'all');
     } else {
       // 普通用户和管理员根据角色权限设置
       for (const role of user.roles) {
@@ -29,15 +29,11 @@ export class CaslAbilityFactory {
           // 根据权限类型和API路径设置能力
           switch (permission.type) {
             case PermissionType.Menu: // 菜单权限
-              can(PermissionAction.Read, 'all');
+              can(PolicyAction.Read, 'all');
               break;
             case PermissionType.Button: // 按钮权限
               can(
-                [
-                  PermissionAction.Create,
-                  PermissionAction.Read,
-                  PermissionAction.Update,
-                ],
+                [PolicyAction.Create, PolicyAction.Read, PolicyAction.Update],
                 'all',
               );
               break;
@@ -46,25 +42,25 @@ export class CaslAbilityFactory {
               if (permission.apiPath) {
                 switch (permission.method?.toUpperCase()) {
                   case 'GET':
-                    can(PermissionAction.Read, 'all');
+                    can(PolicyAction.Read, 'all');
                     break;
                   case 'POST':
-                    can(PermissionAction.Create, 'all');
+                    can(PolicyAction.Create, 'all');
                     break;
                   case 'PUT':
                   case 'PATCH':
-                    can(PermissionAction.Update, 'all');
+                    can(PolicyAction.Update, 'all');
                     break;
                   case 'DELETE':
-                    can(PermissionAction.Delete, 'all');
+                    can(PolicyAction.Delete, 'all');
                     break;
                   default:
-                    can(PermissionAction.Read, 'all');
+                    can(PolicyAction.Read, 'all');
                 }
               }
               break;
             case PermissionType.Data: // 数据权限
-              can([PermissionAction.Read, PermissionAction.Update], 'all');
+              can([PolicyAction.Read, PolicyAction.Update], 'all');
               break;
           }
         }

@@ -32,6 +32,7 @@ import {
   ResponseInterceptor,
   SessionModule,
 } from '@/common';
+import { PolicyModule } from './modules/policy/policy.module';
 
 @Global()
 @Module({
@@ -90,6 +91,7 @@ import {
     SessionModule,
     RolesModule,
     PermissionsModule,
+    PolicyModule,
   ],
   controllers: [AppController],
   providers: [

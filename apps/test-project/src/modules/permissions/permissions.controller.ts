@@ -16,14 +16,14 @@ import { CreatePermissionDto, UpdatePermissionDto } from './dto/permission.dto';
 import { Permission } from './entities/permissions.entity';
 import { PermissionsGuard } from './permissions.guard';
 import { Permissions } from './permissions.decorator';
-import { PermissionAction } from '@/enums';
+import { PolicyAction } from '@/enums';
 
 @Controller('permissions')
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   @UseGuards(PermissionsGuard)
-  @Permissions({ action: PermissionAction.Create, subject: 'Permission' })
+  @Permissions({ action: PolicyAction.Create, subject: 'Permission' })
   @Post()
   async create(
     @Body(ValidationPipe) createPermissionDto: CreatePermissionDto,
@@ -32,7 +32,7 @@ export class PermissionsController {
   }
 
   @UseGuards(PermissionsGuard)
-  @Permissions({ action: PermissionAction.Read, subject: 'Permission' })
+  @Permissions({ action: PolicyAction.Read, subject: 'Permission' })
   @Post('/list')
   async findAll(@Body() query: any): Promise<any> {
     try {
@@ -52,14 +52,14 @@ export class PermissionsController {
   }
 
   @UseGuards(PermissionsGuard)
-  @Permissions({ action: PermissionAction.Read, subject: 'Permission' })
+  @Permissions({ action: PolicyAction.Read, subject: 'Permission' })
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<Permission> {
     return this.permissionsService.findOne(id);
   }
 
   @UseGuards(PermissionsGuard)
-  @Permissions({ action: PermissionAction.Update, subject: 'Permission' })
+  @Permissions({ action: PolicyAction.Update, subject: 'Permission' })
   @Patch(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -69,7 +69,7 @@ export class PermissionsController {
   }
 
   @UseGuards(PermissionsGuard)
-  @Permissions({ action: PermissionAction.Delete, subject: 'Permission' })
+  @Permissions({ action: PolicyAction.Delete, subject: 'Permission' })
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
     return this.permissionsService.remove(id);

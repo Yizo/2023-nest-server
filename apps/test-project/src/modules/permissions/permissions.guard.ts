@@ -2,14 +2,14 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { CaslAbilityFactory } from './casl-ability.factory';
 import {
-  PermissionAction,
+  PolicyAction,
   IS_PUBLIC_KEY,
   PERMISSIONS_KEY,
   Subjects,
 } from '@/enums';
 
 export interface RequiredPermission {
-  action: PermissionAction;
+  action: PolicyAction;
   subject: string;
 }
 

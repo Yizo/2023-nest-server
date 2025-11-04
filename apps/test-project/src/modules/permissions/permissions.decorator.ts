@@ -1,8 +1,8 @@
 import { SetMetadata } from '@nestjs/common';
-import { PermissionAction } from '@/enums';
+import { PolicyAction } from '@/enums';
 
 export interface RequiredPermission {
-  action: PermissionAction;
+  action: PolicyAction;
   subject: string;
 }
 
