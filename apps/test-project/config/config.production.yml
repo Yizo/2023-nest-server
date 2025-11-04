@@ -7,20 +7,20 @@ db:
   type: mysql
   autoLoadEntities: true
   migrationsRun: true
-  host: 39.96.165.134
-  port: 13306
+  host: mysql # Docker服务名
+  port: 3306 # MySQL内部端口（非映射端口）
   username: root
-  password: 8Kytb8EzbAFrbtyC
-  database: nest
+  password: nest_admin_2024_secure
+  database: nest_admin
   timezone: +08:00
   synchronize: false
   logging: true
   logger: file
 
 redis:
-  host: 39.96.165.134
+  host: redis # Docker服务名
   port: 6379
-  password: 123456
+  password: redis_admin_password_123
   # 默认缓存时间, 单位秒
   expiration: 3600
 

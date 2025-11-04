@@ -2,39 +2,83 @@
 # -----------------------
 # 阶段1：构建阶段（安装依赖并打包）
 # -----------------------
-    FROM node:18-alpine AS builder
-    # 使用轻量版 Node 18 镜像
+    FROM node:20-alpine AS builder
+    # 使用LTS版本，更稳定可靠
 
+    # 配置国内镜像源
+    RUN npm config set registry https://registry.npmmirror.com/
+
+    # 安装pnpm
+    RUN npm install -g pnpm@latest
+
+    # 设置工作目录为项目根目录
     WORKDIR /app
-    # 设置容器内的工作目录
 
-    COPY ../package*.json ./
-    # 拷贝依赖文件，用于 npm install
+    # 复制workspace配置文件 (根目录)
+    COPY pnpm-workspace.yaml ./
+    COPY package*.json ./
+    COPY pnpm-lock.yaml ./
 
-    RUN npm install --production=false
-    # 安装所有依赖（包含 devDependencies，因为要构建）
+    # 安装workspace依赖 (允许重新生成lockfile)
+    RUN pnpm install --no-frozen-lockfile
 
-    COPY .. .
-    # 拷贝项目源码到容器
+    # 单独复制子项目代码进去
+    COPY apps/test-project/ ./test-project/
 
-    RUN npm run build
-    # 构建 NestJS 项目（输出到 dist/）
+    # 进入test-project子项目
+    WORKDIR /app/test-project
+
+    # 构建项目
+    RUN pnpm run build
+
 
     # -----------------------
     # 阶段2：运行阶段（仅运行编译后的代码）
     # -----------------------
-    FROM node:18-alpine
+    FROM node:20-alpine
+    # 使用相同版本的Node.js
+
+    # 安装pnpm
+    RUN npm install -g pnpm@latest
+
+    # 配置镜像源
+    RUN npm config set registry https://registry.npmmirror.com/
+
+    # 创建非root用户，提高安全性
+    # RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+
     WORKDIR /app
 
-    COPY --from=builder /app/package*.json ./
-    RUN npm install --production
-    # 仅安装生产依赖，减小镜像体积
+    # 复制workspace配置和依赖信息 (相对于构建上下文)
+    COPY pnpm-lock.yaml ./
+    COPY pnpm-workspace.yaml ./
+    COPY package*.json ./
 
-    COPY --from=builder /app/dist ./dist
-    # 拷贝编译好的 dist 文件
+    # ✅ 直接复制整个test-project目录
+    COPY apps/test-project/ ./test-project/
+
+    # 安装生产依赖 (允许重新生成lockfile)
+    RUN pnpm install --no-frozen-lockfile --prod
+
+    # 进入test-project目录
+    WORKDIR /app/test-project
+
+    # 复制编译好的 dist 文件
+    COPY --from=builder /app/test-project/dist ./dist
+
+
+    # 增加写入权限
+    # RUN chown -R nestjs:nodejs /app
+
+    # 切换到非root用户
+    # USER nestjs
+
+    # 切换到应用目录
+    WORKDIR /app/test-project
 
     EXPOSE 3000
     # 暴露端口，供外部访问 NestJS
 
-    CMD ["node", "dist/main.js"]
-    # 启动应用
+    # CMD ["pnpm", "run", "pm2:prod"]
+    # 使用PM2启动应用，提供进程守护功能
+    CMD ["node", "./dist/src/main.js"]
