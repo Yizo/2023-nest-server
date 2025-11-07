@@ -35,6 +35,8 @@ services: # 定义多个服务（NestJS, MySQL, Redis）
     image: mysql:8.0 # 使用通用版本，避免版本冲突
     container_name: mysql_db # 容器名
     restart: unless-stopped # 崩溃自动重启
+    ports:
+      - '3306:3306' # 映射MySQL端口到宿主机
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
@@ -43,8 +45,7 @@ services: # 定义多个服务（NestJS, MySQL, Redis）
       # 写死的数据库配置（与config.production.yml一致）
       MYSQL_ROOT_PASSWORD: nest_admin_2024_secure
       MYSQL_DATABASE: nest_admin
-      MYSQL_USER: root # 与config.production.yml一致
-      MYSQL_PASSWORD: nest_admin_2024_secure # 与config.production.yml一致
+      # 移除 MYSQL_USER，因为它不能设置为 root
     # ✅ 备注：容器内部MySQL运行在3306端口，但不对外暴露
     #  - 其他容器通过 mysql:3306 访问
     #  - 宿主机通过 127.0.0.1:13306 访问
@@ -58,6 +59,8 @@ services: # 定义多个服务（NestJS, MySQL, Redis）
     image: redis:7.0-alpine # 使用固定版本的 Redis
     container_name: redis_cache
     restart: unless-stopped
+    ports:
+      - '6379:6379' # 映射Redis端口到宿主机
     command: >
       redis-server --requirepass redis_admin_password_123
     # 移除端口暴露，仅在Docker内部网络可访问

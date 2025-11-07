@@ -38,8 +38,9 @@
     FROM node:20-alpine
     # 使用相同版本的Node.js
 
-    # 安装pnpm
+    # 安装pnpm、netcat (用于健康检查)和mysql客户端(用于数据库检查)
     RUN npm install -g pnpm@latest
+    RUN apk add --no-cache netcat-openbsd mysql-client
 
     # 配置镜像源
     RUN npm config set registry https://registry.npmmirror.com/
@@ -66,6 +67,9 @@
     # 复制编译好的 dist 文件
     COPY --from=builder /app/test-project/dist ./dist
 
+    # 复制入口点脚本
+    COPY apps/test-project/docker/entrypoint.sh ./
+    RUN chmod +x entrypoint.sh
 
     # 增加写入权限
     # RUN chown -R nestjs:nodejs /app
@@ -76,9 +80,8 @@
     # 切换到应用目录
     WORKDIR /app/test-project
 
-    EXPOSE 3000
+    EXPOSE 9000
     # 暴露端口，供外部访问 NestJS
 
-    # CMD ["pnpm", "run", "pm2:prod"]
-    # 使用PM2启动应用，提供进程守护功能
-    CMD ["node", "./dist/src/main.js"]
+    # 使用入口点脚本
+    CMD ["sh", "./entrypoint.sh"]

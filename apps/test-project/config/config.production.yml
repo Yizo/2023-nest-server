@@ -13,7 +13,7 @@ db:
   password: nest_admin_2024_secure
   database: nest_admin
   timezone: +08:00
-  synchronize: false
+  synchronize: true
   logging: true
   logger: file
 
