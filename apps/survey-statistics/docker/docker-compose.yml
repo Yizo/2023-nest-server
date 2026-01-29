@@ -1,0 +1,27 @@
+version: '3.9'
+services:
+  survey-statistics:
+    build:
+      context: ../..
+      dockerfile: apps/survey-statistics/docker/Dockerfile
+    image: survey-statistics:latest
+    restart: always
+    environment:
+      NODE_ENV: production
+      DB_TYPE: mysql
+      DB_HOST: 39.96.165.134
+      DB_PORT: 13306
+      DB_USERNAME: root
+      DB_PASSWORD: 8Kytb8EzbAFrbtyC
+      DB_DATABASE: survey_statistics
+      DB_TIMEZONE: +08:00
+      DB_SYNCHRONIZE: 'false'
+      DB_LOGGING: 'false'
+      REDIS_HOST: 39.96.165.134
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: 123456
+      REDIS_EXPIRATION: 3600
+      JWT_SECRET: prod_secret
+      JWT_EXPIRATION: 1h
+    ports:
+      - 3003:3003
