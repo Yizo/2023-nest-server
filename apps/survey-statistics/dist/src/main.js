@@ -11,6 +11,7 @@ async function bootstrap() {
         .setTitle("Survey Statistics API")
         .setDescription("问卷统计平台后台接口")
         .setVersion("1.0")
+        .addServer("http://localhost:3003/api", "API 前缀")
         .addBearerAuth({
         type: "http",
         scheme: "bearer",

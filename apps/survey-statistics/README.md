@@ -40,4 +40,11 @@ pnpm --filter survey-statistics test
 pnpm --filter survey-statistics test:e2e
 ```
 
+## 默认密码
+
+```bash
+node -e "const bcrypt=require('bcrypt'); bcrypt.hash('123456',10).then(console.log)"
+// $2b$10$M.TotsrNomrQ.DQx171.9up7SBArHc8YmblLs9ghwPz9ZeocQvpv6
+```
+
 测试依赖 `supertest`，默认执行 `/api/health`。
