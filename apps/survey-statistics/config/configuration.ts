@@ -18,6 +18,9 @@ export default () => {
 	try {
 		const defaultConfig = loadYaml(join(configDir, "config.yml"));
 		const envConfig = loadYaml(join(configDir, `config.${env}.yml`));
+
+		console.log("config", merge(defaultConfig, envConfig));
+
 		return merge(defaultConfig, envConfig);
 	} catch (error) {
 		const message =

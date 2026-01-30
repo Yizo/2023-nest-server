@@ -61,7 +61,8 @@ export class SurveyController {
 	@ApiOperation({ summary: "分页查询问卷" })
 	@ApiQuery({ name: "limit", required: false, description: "每页数量，默认 20" })
 	@ApiQuery({ name: "offset", required: false, description: "偏移量，默认 0" })
-	list(@Query("limit") limit = 20, @Query("offset") offset = 0) {
+	list(@Query("limit") limit = 20, @Query("offset") offset = 0, @ReqUser() user: any) {
+		console.log("user", user);
 		return this.surveyService.findAll(Number(limit), Number(offset));
 	}
 

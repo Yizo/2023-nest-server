@@ -1,4 +1,4 @@
-import { Module, Global, ValidationPipe } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { CacheModule } from "@nestjs/cache-manager";
@@ -14,6 +14,7 @@ import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { ResponseTransformInterceptor } from "./common/interceptors/response-transform.interceptor";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 import { JwtAuthGuard } from "./modules/auth/jwt/jwt.guard";
+import { CustomValidationPipe } from "./common/pipes/validation.pipe";
 
 @Global()
 @Module({
@@ -68,27 +69,24 @@ import { JwtAuthGuard } from "./modules/auth/jwt/jwt.guard";
 	providers: [
 		AppService,
 		{
-			provide: APP_PIPE,
-			useValue: new ValidationPipe({
-				whitelist: true,
-				forbidNonWhitelisted: false,
-			}),
-		},
-		{
-			provide: APP_FILTER,
-			useClass: HttpExceptionFilter,
-		},
-		{
-			provide: APP_GUARD,
-			useClass: JwtAuthGuard,
-		},
-		{
 			provide: APP_INTERCEPTOR,
 			useClass: LoggingInterceptor,
 		},
 		{
 			provide: APP_INTERCEPTOR,
 			useClass: ResponseTransformInterceptor,
+		},
+		{
+			provide: APP_FILTER,
+			useClass: HttpExceptionFilter,
+		},
+		{
+			provide: APP_PIPE,
+			useClass: CustomValidationPipe,
+		},
+		{
+			provide: APP_GUARD,
+			useClass: JwtAuthGuard,
 		},
 	],
 	exports: [AppService],

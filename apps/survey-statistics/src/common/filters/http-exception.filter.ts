@@ -1,13 +1,22 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from "@nestjs/common";
+import {
+	ArgumentsHost,
+	Catch,
+	ExceptionFilter,
+	HttpException,
+	HttpStatus,
+	Logger,
+} from "@nestjs/common";
 import type { Request, Response } from "express";
 
 interface HttpErrorBody {
 	message?: string | string[];
 	error?: string;
+	code?: string | number;
 }
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+	private readonly logger = new Logger(HttpExceptionFilter.name);
 	catch(exception: unknown, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
 		const response = ctx.getResponse<Response>();
@@ -29,17 +38,47 @@ export class HttpExceptionFilter implements ExceptionFilter {
 				} else if (errorBody.error) {
 					message = errorBody.error;
 				}
+				if ("code" in errorBody) {
+					status = errorBody.code as HttpStatus;
+				}
 			}
 		} else if (exception instanceof Error && exception.message) {
 			message = exception.message;
 		}
 
-		response.status(status).json({
+		const errorResponse = {
 			code: status,
 			message,
 			data: null,
 			timestamp: new Date().toISOString(),
-			path: request.url,
-		});
+		};
+
+		const userId = (request as any).user?.id || (request as any).user?.userId || null;
+
+		const requestInfo = {
+			method: request.method,
+			url: request.url,
+			params: request.params,
+			originalUrl: request.originalUrl,
+			protocol: request.protocol,
+			hostname: request.hostname,
+			subdomains: request.subdomains,
+			query: request.query,
+			body: request.body,
+			ip: request.ip,
+			headers: request.headers,
+			userId,
+		};
+
+		this.logger.error(
+			"接口失败",
+			{
+				request: requestInfo,
+				response: errorResponse,
+			},
+			HttpExceptionFilter.name,
+		);
+
+		response.status(status).json(errorResponse);
 	}
 }

@@ -13,22 +13,31 @@ export class LoggingInterceptor implements NestInterceptor {
 			method: request.method,
 			url: request.url,
 			params: request.params,
+			originalUrl: request.originalUrl,
+			protocol: request.protocol,
+			hostname: request.hostname,
+			subdomains: request.subdomains,
 			query: request.query,
 			body: request.body,
+			ip: request.ip,
+			headers: request.headers,
 		};
 
 		const now = Date.now();
 
 		return next.handle().pipe(
 			tap((response) => {
-				this.logger.log(
-					{
-						request: requestInfo,
-						response,
-						duration: `${Date.now() - now}ms`,
-					},
-					"接口日志",
-				);
+				const payload = response as { code?: number };
+				if (payload && typeof payload === "object" && payload.code === 0) {
+					this.logger.log(
+						{
+							request: requestInfo,
+							response,
+							duration: `${Date.now() - now}ms`,
+						},
+						"接口成功",
+					);
+				}
 			}),
 		);
 	}

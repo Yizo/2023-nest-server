@@ -6,7 +6,7 @@ db:
   port: 13306
   username: root
   password: 8Kytb8EzbAFrbtyC
-  database: nest
+  database: admin
   timezone: +08:00
   synchronize: true
   logging: true

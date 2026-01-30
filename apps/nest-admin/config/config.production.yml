@@ -11,7 +11,7 @@ db:
   port: 3306 # MySQL内部端口（非映射端口）
   username: root
   password: nest_admin_2024_secure
-  database: nest_admin
+  database: admin
   timezone: +08:00
   synchronize: true
   logging: true

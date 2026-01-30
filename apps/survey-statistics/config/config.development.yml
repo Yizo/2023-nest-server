@@ -19,4 +19,4 @@ redis:
 
 jwt:
     secret: dev_secret
-    expiration: 1h
+    expiration: 24h
