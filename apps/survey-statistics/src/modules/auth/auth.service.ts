@@ -1,11 +1,9 @@
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
-import { Cache } from "cache-manager";
 import { UserService } from "../user/user.service";
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { ConfigService } from "@nestjs/config";
-
+import { RedisService } from "@/modules/redis/redis.service";
 import { RegisterAuthDto } from "./dto/register-auth.dto";
 import { LoginAuthDto } from "./dto/login-auth.dto";
 
@@ -15,7 +13,7 @@ export class AuthService {
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService,
-		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		private redisService: RedisService,
 	) {}
 
 	async register(dto: RegisterAuthDto) {
@@ -43,7 +41,7 @@ export class AuthService {
 
 		const expiration = this.configService.get("redis").expiration;
 
-		await this.cacheManager.set("user:" + userId, accessToken, expiration * 1000);
+		await this.redisService.set("token:" + userId, accessToken, expiration * 1000);
 		return {
 			accessToken,
 			user: {
@@ -51,5 +49,10 @@ export class AuthService {
 				username,
 			},
 		};
+	}
+
+	async logout(userId: string) {
+		await this.redisService.del("token:" + userId);
+		return true;
 	}
 }

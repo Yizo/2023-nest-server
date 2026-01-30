@@ -1,15 +1,14 @@
 import { Global, Module } from "@nestjs/common";
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { CacheModule } from "@nestjs/cache-manager";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import KeyvRedis from "@keyv/redis";
 import configuration from "../config/configuration";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthModule } from "./modules/auth/auth.module";
 import { SurveyModule } from "./modules/survey/survey.module";
 import { UserModule } from "./modules/user/user.module";
+import { RedisModule } from "./modules/redis/redis.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { ResponseTransformInterceptor } from "./common/interceptors/response-transform.interceptor";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
@@ -46,21 +45,7 @@ import { CustomValidationPipe } from "./common/pipes/validation.pipe";
 				};
 			},
 		}),
-		CacheModule.registerAsync({
-			inject: [ConfigService],
-			isGlobal: true,
-			useFactory: (config: ConfigService) => {
-				const redis = config.get("redis");
-				const store = new KeyvRedis({
-					url: `redis://${redis.host}:${redis.port}`,
-					password: redis.password?.toString(),
-				});
-				store.on("error", (error: Error) => {
-					console.error("KeyvRedis Error", error);
-				});
-				return { stores: [store] };
-			},
-		}),
+		RedisModule,
 		UserModule,
 		AuthModule,
 		SurveyModule,
