@@ -2,13 +2,15 @@ import { Global, Module } from "@nestjs/common";
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import configuration from "../config/configuration";
-import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
+import { QueryBuilderModule } from "@2023-nest-server/commons";
 import { AuthModule } from "./modules/auth/auth.module";
 import { SurveyModule } from "./modules/survey/survey.module";
 import { UserModule } from "./modules/user/user.module";
 import { RedisModule } from "./modules/redis/redis.module";
+import { SystemModule } from "./modules/system/system.module";
+import configuration from "../config/configuration";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { ResponseTransformInterceptor } from "./common/interceptors/response-transform.interceptor";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
@@ -49,6 +51,8 @@ import { CustomValidationPipe } from "./common/pipes/validation.pipe";
 		UserModule,
 		AuthModule,
 		SurveyModule,
+		SystemModule,
+		QueryBuilderModule,
 	],
 	controllers: [AppController],
 	providers: [

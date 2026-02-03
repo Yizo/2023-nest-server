@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import * as bcrypt from "bcrypt";
-import { User } from "./entities/user.entity";
+import { User } from "./user.entity";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 
@@ -15,7 +15,7 @@ import { UpdateUserDto } from "./dto/update-user.dto";
 export class UserService {
 	constructor(
 		@InjectRepository(User)
-		private readonly userRepository: Repository<User>,
+		private readonly userRepository: Repository<User>
 	) {}
 
 	async create(dto: CreateUserDto): Promise<User> {

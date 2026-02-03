@@ -226,7 +226,13 @@ importers:
         specifier: '*'
         version: 1.2.2(@nestjs/common@9.4.3(cache-manager@7.2.0)(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.14)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.1.14)
 
-  apps/survey-statistics: {}
+  apps/survey-statistics:
+    dependencies:
+      '@2023-nest-server/commons':
+        specifier: workspace:*
+        version: link:../../packages/commons
+
+  packages/commons: {}
 
 packages:
 

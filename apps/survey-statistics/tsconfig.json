@@ -15,7 +15,8 @@
 		"strict": true,
 		"types": ["node", "jest"],
 		"paths": {
-			"@/*": ["src/*"]
+			"@/*": ["src/*"],
+			"@2023-nest-server/commons": ["../../packages/commons/src/index.ts"]
 		}
 	},
 	"include": ["src/**/*"],

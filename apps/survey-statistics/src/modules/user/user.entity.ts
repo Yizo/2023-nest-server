@@ -5,7 +5,13 @@ import {
 	Index,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
+	DeleteDateColumn,
+	OneToOne,
+	OneToMany,
 } from "typeorm";
+
+import { Profile } from "@/modules/profile/profile.entity";
+import { UserRole } from "./userRole.entity";
 
 @Entity("users")
 export class User {
@@ -31,4 +37,15 @@ export class User {
 
 	@UpdateDateColumn()
 	updatedAt!: Date;
+
+	@DeleteDateColumn({
+		nullable: true,
+	})
+	deletedAt!: Date;
+
+	@OneToOne(() => Profile, (profile) => profile.user)
+	profile!: Profile;
+
+	@OneToMany(() => UserRole, (userRole) => userRole.user)
+	userRoles!: UserRole[];
 }
