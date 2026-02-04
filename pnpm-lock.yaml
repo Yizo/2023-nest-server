@@ -228,11 +228,16 @@ importers:
 
   apps/survey-statistics:
     dependencies:
-      '@2023-nest-server/commons':
+      '@base/commons':
         specifier: workspace:*
         version: link:../../packages/commons
+      '@base/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
 
   packages/commons: {}
+
+  packages/utils: {}
 
 packages:
 

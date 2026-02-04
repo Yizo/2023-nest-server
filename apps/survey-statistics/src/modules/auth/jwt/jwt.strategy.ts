@@ -33,8 +33,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 	async validate(request: Request, payload: { sub: string; username: string }) {
 		const token = ExtractJwt.fromAuthHeaderAsBearerToken()(request);
 		const cachedToken = await this.redisService.get(`token:${payload.sub}`);
-		console.log("cachedToken", cachedToken);
-		console.log("token", token);
 		if (!cachedToken) {
 			throw new UnauthorizedException({
 				message: AuthErrorMessages.TOKEN_EXPIRED,

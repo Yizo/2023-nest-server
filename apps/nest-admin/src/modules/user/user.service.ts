@@ -5,7 +5,7 @@ import { RoleType } from '@/enums/role.enum';
 import { User, UserStatus } from './entities/user.entity';
 import { Profile } from '@/modules/profile/entities/profile.entity';
 import { FindAllBodyDto, UpdateUserDto, CreateUserDto } from './dto/user-dto';
-import { QueryBuilderFactory, QueryBuilderHelper } from '@/common';
+import { QueryBuilderFactory, QueryBuilderHelper } from '@base/commons';
 import { RolesService } from '@/modules/roles/roles.service';
 import { ProfileService } from '@/modules/profile/profile.service';
 

@@ -44,10 +44,14 @@ export class ResponseTransformInterceptor implements NestInterceptor {
 					return response;
 				}
 
-				const { total, page, pageSize, totalPages, code, message, ...rest } = result;
+				const { total, page, pageSize, totalPages, code, message, data, ...rest } = result;
 				response.code = code ?? 0;
 				response.message = message ?? "成功";
-				response.data = rest && Object.keys(rest).length > 0 ? rest : null;
+				if (data) {
+					response.data = data;
+				} else {
+					response.data = rest && Object.keys(rest).length > 0 ? rest : null;
+				}
 				if (total != null) response.total = total;
 				if (page != null) response.page = page;
 				if (pageSize != null) response.pageSize = pageSize;

@@ -1,4 +1,5 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
 		"module": "CommonJS",
 		"declaration": true,
@@ -15,8 +16,7 @@
 		"strict": true,
 		"types": ["node", "jest"],
 		"paths": {
-			"@/*": ["src/*"],
-			"@2023-nest-server/commons": ["../../packages/commons/src/index.ts"]
+			"@/*": ["src/*"]
 		}
 	},
 	"include": ["src/**/*"],

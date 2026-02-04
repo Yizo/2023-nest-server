@@ -1,11 +1,12 @@
-import { Injectable, HttpStatus } from "@nestjs/common";
+import { Injectable, HttpStatus, Logger } from "@nestjs/common";
 import { CreateSystemDto } from "./dto/create-system.dto";
 import { UpdateSystemDto } from "./dto/update-system.dto";
 import { System } from "./entities/system.entity";
 import { Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
-import { QueryBuilderFactory, QueryBuilderHelper } from "@2023-nest-server/commons";
+import { QueryBuilderFactory, QueryBuilderHelper } from "@base/commons";
 import { SystemConfigType } from "@/enums/system";
+import { UserService } from "../user/user.service";
 
 @Injectable()
 export class SystemService {
@@ -13,7 +14,9 @@ export class SystemService {
 	constructor(
 		@InjectRepository(System)
 		private readonly systemRepository: Repository<System>,
-		private readonly queryBuilderFactory: QueryBuilderFactory
+		private readonly queryBuilderFactory: QueryBuilderFactory,
+		private readonly userService: UserService,
+		private readonly logger: Logger
 	) {
 		this.systemQueryBuilder = this.queryBuilderFactory.createFromRepository(
 			this.systemRepository
@@ -22,8 +25,10 @@ export class SystemService {
 
 	// 查询是否已初始化
 	async isInitialized() {
-		const system = await this.systemQueryBuilder.findOne({
-			conditions: [{ field: "key", operator: "eq", value: SystemConfigType.IS_INITIALIZED }],
+		const system = await this.systemRepository.findOne({
+			where: {
+				key: SystemConfigType.IS_INITIALIZED,
+			},
 		});
 		return system ? true : false;
 	}
@@ -40,11 +45,17 @@ export class SystemService {
 		}
 
 		// 2. 初始化系统
-		// this.systemRepository.manager.transaction(async (manager) => {
-		// 	const system = manager.create(System, createSystemDto);
-		// 	return await manager.save(system);
-		// });
-		return "ok";
+		return await this.systemRepository.manager.transaction(async (manager) => {
+			// 1. 创建超级管理员
+			const superAdmins = await this.userService.createSuperAdmin();
+
+			// 2. 如果需要在此事务中进行其他数据库操作，可以使用 manager
+			// 例如：创建系统配置
+			// const systemConfig = manager.create(System, { key: SystemConfigType.IS_INITIALIZED, value: 'true' });
+			// await manager.save(systemConfig);
+
+			return superAdmins;
+		});
 	}
 
 	update(id: number, updateSystemDto: UpdateSystemDto) {

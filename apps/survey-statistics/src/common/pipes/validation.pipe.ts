@@ -6,7 +6,6 @@ import {
 	HttpException,
 	Logger,
 	ValidationPipe,
-	ValidationError,
 } from "@nestjs/common";
 
 @Injectable()
@@ -20,7 +19,6 @@ export class CustomValidationPipe extends ValidationPipe implements PipeTransfor
 			// 自动类型转换（如字符串转数字、布尔等，推荐）
 			transform: true,
 			exceptionFactory: (errors: any[]) => {
-				console.log("errors", errors);
 				const firstError = errors.find(
 					(error) => Object.keys(error.constraints).length > 0,
 				);
@@ -35,8 +33,6 @@ export class CustomValidationPipe extends ValidationPipe implements PipeTransfor
 	}
 
 	async transform(value: unknown, metadata: ArgumentMetadata) {
-		this.logger?.log({ value, metadata }, "验证管道");
-
 		return super.transform(value, metadata);
 	}
 }

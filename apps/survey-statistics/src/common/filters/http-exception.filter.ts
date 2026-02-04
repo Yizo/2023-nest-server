@@ -71,12 +71,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
 		};
 
 		this.logger.error(
-			"接口失败",
 			{
 				request: requestInfo,
 				response: errorResponse,
 			},
-			HttpExceptionFilter.name,
+			"全局异常过滤器"
 		);
 
 		response.status(status).json(errorResponse);

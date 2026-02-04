@@ -5,7 +5,7 @@ import { tap } from "rxjs/operators";
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-	private readonly logger = new Logger(LoggingInterceptor.name);
+	constructor(private readonly logger: Logger) {}
 
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
 		const request = context.switchToHttp().getRequest<Request>();
@@ -35,10 +35,10 @@ export class LoggingInterceptor implements NestInterceptor {
 							response,
 							duration: `${Date.now() - now}ms`,
 						},
-						"接口成功",
+						"请求响应拦截器"
 					);
 				}
-			}),
+			})
 		);
 	}
 }

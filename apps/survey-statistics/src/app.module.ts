@@ -2,7 +2,7 @@ import { Global, Module } from "@nestjs/common";
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { QueryBuilderModule } from "@2023-nest-server/commons";
+import { QueryBuilderModule } from "@base/commons";
 import { LoggerModule } from "./common/logger/logger.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { SurveyModule } from "./modules/survey/survey.module";
