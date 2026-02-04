@@ -1,60 +1,64 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
+import {
+	CallHandler,
+	ExecutionContext,
+	Injectable,
+	NestInterceptor,
+	StreamableFile,
+	Logger,
+} from "@nestjs/common";
+import { Readable } from "stream";
+
 import type { Observable } from "rxjs";
 import { map } from "rxjs/operators";
 
-const metaKeys = ["total", "page", "pageSize"];
+export interface ApiResponse<T> {
+	code: number;
+	message: string;
+	data: T;
+	total?: number | null;
+	page?: number | null;
+	pageSize?: number | null;
+	totalPages?: number | null;
+}
 
 @Injectable()
 export class ResponseTransformInterceptor implements NestInterceptor {
+	constructor(private readonly logger: Logger) {}
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-		return next.handle().pipe(map((result) => this.formatResponse(result)));
-	}
+		return next.handle().pipe(
+			map((result) => {
+				this.logger.log({ result }, "全局响应拦截器:result");
 
-	private formatResponse(payload: unknown) {
-		const { data, meta } = this.extractPayload(payload);
-		return {
-			code: 0,
-			message: "success",
-			data,
-			...(meta ?? {}),
-		};
-	}
+				const response: ApiResponse<any> = {
+					code: 0,
+					message: "成功",
+					data: null,
+				};
+				if (result == null) return response;
+				if (Buffer.isBuffer(result)) return result;
+				if (result instanceof StreamableFile) return result;
+				if (result instanceof Readable) return new StreamableFile(result);
 
-	private extractPayload(payload: unknown): {
-		data: unknown;
-		meta: Record<string, unknown> | null;
-	} {
-		if (payload && Array.isArray(payload)) {
-			return {
-				data: payload,
-				meta: null,
-			};
-		}
-
-		if (payload && typeof payload === "object") {
-			const clone = { ...payload } as Record<string, unknown>;
-			const meta: Record<string, unknown> = {};
-			for (const key of metaKeys) {
-				if (key in clone) {
-					meta[key] = clone[key];
-					delete clone[key];
+				if (typeof result !== "object") {
+					response.data = result;
+					return response;
 				}
-			}
 
-			const extractedData = "data" in clone ? clone.data : clone;
-			if ("data" in clone) {
-				delete clone.data;
-			}
-
-			return {
-				data: extractedData ?? null,
-				meta: Object.keys(meta).length ? meta : null,
-			};
-		}
-
-		return {
-			data: payload ?? null,
-			meta: null,
-		};
+				const { total, page, pageSize, totalPages, code, message, ...rest } = result;
+				response.code = code ?? 0;
+				response.message = message ?? "成功";
+				response.data = rest && Object.keys(rest).length > 0 ? rest : null;
+				if (total != null) response.total = total;
+				if (page != null) response.page = page;
+				if (pageSize != null) response.pageSize = pageSize;
+				if (totalPages != null) {
+					response.totalPages = totalPages;
+				} else if (total != null && pageSize != null && pageSize > 0) {
+					response.totalPages = Math.ceil(total / pageSize);
+				}
+				this.logger.log({ response }, "全局响应拦截器:response");
+				return response;
+			})
+		);
 	}
 }

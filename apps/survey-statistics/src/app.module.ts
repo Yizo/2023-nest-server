@@ -3,6 +3,7 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { QueryBuilderModule } from "@2023-nest-server/commons";
+import { LoggerModule } from "./common/logger/logger.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { SurveyModule } from "./modules/survey/survey.module";
 import { UserModule } from "./modules/user/user.module";
@@ -20,6 +21,8 @@ import { CustomValidationPipe } from "./common/pipes/validation.pipe";
 @Global()
 @Module({
 	imports: [
+		/**************全局模块**************/
+		LoggerModule.forRoot(),
 		ConfigModule.forRoot({
 			isGlobal: true,
 			load: [configuration],
@@ -47,12 +50,13 @@ import { CustomValidationPipe } from "./common/pipes/validation.pipe";
 				};
 			},
 		}),
+		QueryBuilderModule,
 		RedisModule,
+		/**************全局模块**************/
 		UserModule,
 		AuthModule,
 		SurveyModule,
 		SystemModule,
-		QueryBuilderModule,
 	],
 	controllers: [AppController],
 	providers: [
@@ -78,6 +82,5 @@ import { CustomValidationPipe } from "./common/pipes/validation.pipe";
 			useClass: JwtAuthGuard,
 		},
 	],
-	exports: [AppService],
 })
 export class AppModule {}

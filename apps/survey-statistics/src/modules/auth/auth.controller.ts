@@ -4,6 +4,7 @@ import { AuthService } from "./auth.service";
 import { RegisterAuthDto } from "./dto/register-auth.dto";
 import { LoginAuthDto } from "./dto/login-auth.dto";
 import { Public } from "@/common/decorators/public.decorator";
+import { ReqUser } from "@/common/decorators/req-user.decorator";
 
 @Controller("auth")
 @ApiTags("auth")
@@ -30,7 +31,7 @@ export class AuthController {
 	@Get("logout")
 	@ApiOperation({ summary: "管理员退出" })
 	@ApiResponse({ status: 200, description: "退出成功" })
-	logout(@Query("userId") userId: string) {
-		return this.authService.logout(userId);
+	logout(@ReqUser() user: any) {
+		return this.authService.logout(user.userId);
 	}
 }
