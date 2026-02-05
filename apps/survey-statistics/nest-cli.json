@@ -1,0 +1,14 @@
+{
+	"collection": "@nestjs/schematics",
+	"sourceRoot": "src",
+	"root": "/",
+	"compilerOptions": {
+		"watchAssets": true,
+		"assets": [
+			{
+				"include": "../config/*.{yml,yaml}",
+				"outDir": "dist/config"
+			}
+		]
+	}
+}

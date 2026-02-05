@@ -1,0 +1,25 @@
+mode:
+    name: development
+    development: true
+
+db:
+    type: mysql
+    host: 39.96.165.134
+    port: 13306
+    username: root
+    password: 8Kytb8EzbAFrbtyC
+    database: survey_statistics
+    timezone: +08:00
+    synchronize: true
+    logging: true
+    logger: file
+    createForeignKeyConstraints: false
+
+redis:
+    host: 39.96.165.134
+    port: 26739
+    password: YjdeMr3eSrejSTck
+    expiration: 3600
+
+jwt:
+    secret: dev_secret

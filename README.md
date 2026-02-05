@@ -1,10 +1,15 @@
-# 学习理解
+# nestjs + typeorm + mysql
 
-## JoinColumn
+## 端口
 
-- 拥有关系的一方
-- 数据库层的约束 onDelete/onUpdate 写在这里
+### 检查
 
-## cascade
+```shell
+sudo lsof -i :3003
+```
 
-- ORM 层面的级联, 调用哪个实体做关联操作写在哪个实体上
+### 杀端口进程
+
+```shell
+sudo kill -9 [pid]
+```

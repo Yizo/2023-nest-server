@@ -1,0 +1,24 @@
+{
+	"name": "survey-statistics",
+	"version": "0.0.1",
+	"private": true,
+	"license": "UNLICENSED",
+	"scripts": {
+		"build": "nest build",
+		"format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+		"start": "nest start",
+		"start:dev": "cross-env NODE_ENV=development nest start --watch",
+		"start:debug": "cross-env NODE_ENV=development nest start --debug --watch",
+		"start:prod": "node dist/main",
+		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+		"test": "jest",
+		"test:e2e": "jest --config ./test/jest-e2e.json",
+		"pm2:prod": "pm2 start pm2.config.ts --env production --interpreter ts-node/register",
+		"pm2:dev": "pm2 start pm2.config.ts --env development --interpreter ts-node/register"
+	},
+	"dependencies": {
+		"@base/commons": "workspace:*",
+		"@base/utils": "workspace:*"
+	},
+	"packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
+}

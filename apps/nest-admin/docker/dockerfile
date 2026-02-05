@@ -1,0 +1,87 @@
+# Dockerfile
+# -----------------------
+# 阶段1：构建阶段（安装依赖并打包）
+# -----------------------
+    FROM node:20-alpine AS builder
+    # 使用LTS版本，更稳定可靠
+
+    # 配置国内镜像源
+    RUN npm config set registry https://registry.npmmirror.com/
+
+    # 安装pnpm
+    RUN npm install -g pnpm@latest
+
+    # 设置工作目录为项目根目录
+    WORKDIR /app
+
+    # 复制workspace配置文件 (根目录)
+    COPY pnpm-workspace.yaml ./
+    COPY package*.json ./
+    COPY pnpm-lock.yaml ./
+
+    # 安装workspace依赖 (允许重新生成lockfile)
+    RUN pnpm install --no-frozen-lockfile
+
+    # 单独复制子项目代码进去
+    COPY apps/test-project/ ./test-project/
+
+    # 进入test-project子项目
+    WORKDIR /app/test-project
+
+    # 构建项目
+    RUN pnpm run build
+
+
+    # -----------------------
+    # 阶段2：运行阶段（仅运行编译后的代码）
+    # -----------------------
+    FROM node:20-alpine
+    # 使用相同版本的Node.js
+
+    # 安装pnpm、netcat (用于健康检查)和mysql客户端(用于数据库检查)
+    RUN npm install -g pnpm@latest
+    RUN apk add --no-cache netcat-openbsd mysql-client
+
+    # 配置镜像源
+    RUN npm config set registry https://registry.npmmirror.com/
+
+    # 创建非root用户，提高安全性
+    # RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+
+    WORKDIR /app
+
+    # 复制workspace配置和依赖信息 (相对于构建上下文)
+    COPY pnpm-lock.yaml ./
+    COPY pnpm-workspace.yaml ./
+    COPY package*.json ./
+
+    # ✅ 直接复制整个test-project目录
+    COPY apps/test-project/ ./test-project/
+
+    # 安装生产依赖 (允许重新生成lockfile)
+    RUN pnpm install --no-frozen-lockfile --prod
+
+    # 进入test-project目录
+    WORKDIR /app/test-project
+
+    # 复制编译好的 dist 文件
+    COPY --from=builder /app/test-project/dist ./dist
+
+    # 复制入口点脚本
+    COPY apps/test-project/docker/entrypoint.sh ./
+    RUN chmod +x entrypoint.sh
+
+    # 增加写入权限
+    # RUN chown -R nestjs:nodejs /app
+
+    # 切换到非root用户
+    # USER nestjs
+
+    # 切换到应用目录
+    WORKDIR /app/test-project
+
+    EXPOSE 9000
+    # 暴露端口，供外部访问 NestJS
+
+    # 使用入口点脚本
+    CMD ["sh", "./entrypoint.sh"]

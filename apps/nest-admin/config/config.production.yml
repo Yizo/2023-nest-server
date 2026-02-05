@@ -1,0 +1,30 @@
+## 环境模块
+mode:
+  name: 'production'
+  development: false
+
+db:
+  type: mysql
+  autoLoadEntities: true
+  migrationsRun: true
+  host: mysql # Docker服务名
+  port: 3306 # MySQL内部端口（非映射端口）
+  username: root
+  password: nest_admin_2024_secure
+  database: admin
+  timezone: +08:00
+  synchronize: true
+  logging: true
+  logger: file
+
+redis:
+  host: redis # Docker服务名
+  port: 6379
+  password: redis_admin_password_123
+  # 默认缓存时间, 单位秒
+  expiration: 3600
+
+user:
+  image: mysql:8.0.32
+  command: --default-authentication-plugin=mysql_native_password
+  restart: always

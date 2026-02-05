@@ -1,0 +1,84 @@
+version: '3.9' # Docker Compose 文件版本，3.9 是较新的稳定版本
+
+services: # 定义多个服务（NestJS, MySQL, Redis）
+  app: # 你的 NestJS 应用服务
+    build: # 指定如何构建该服务的镜像
+      context: ../../.. # 构建上下文目录，指向项目根目录
+      dockerfile: apps/test-project/docker/Dockerfile # 指定Dockerfile相对于根目录的路径
+    container_name: nestjs_app # 容器的名称（方便调试和管理）
+    restart: unless-stopped # 如果容器崩溃，自动重启（生产环境推荐）
+    ports:
+      - '9000:9000' # 暴露应用端口到宿主机
+    environment:
+      # 使用写死的环境配置
+      - NODE_ENV=production
+      # 数据库连接配置（Docker内部网络）
+      - DB_HOST=mysql # 使用Docker服务名，内部DNS解析
+      - REDIS_HOST=redis # 使用Docker服务名
+      - DB_PORT=3306 # MySQL内部端口（非映射端口）
+      - REDIS_PORT=6379
+      # 数据库配置（与config.production.yml一致）
+      - MYSQL_DATABASE=nest_admin
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=nest_admin_2024_secure
+      # 额外的TypeORM配置（与config.production.yml一致）
+      - DB_TYPE=mysql
+      - DB_SYNCHRONIZE=false
+      - DB_LOGGING=true
+    depends_on:
+      - mysql # 在 mysql 启动完成后再启动 app
+      - redis # 同理，等待 redis 启动
+    networks:
+      - backend # 连接到自定义网络 backend
+
+  mysql: # MySQL 数据库服务 - 恢复稳定版本
+    image: mysql:8.0 # 使用通用版本，避免版本冲突
+    container_name: mysql_db # 容器名
+    restart: unless-stopped # 崩溃自动重启
+    ports:
+      - '3306:3306' # 映射MySQL端口到宿主机
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    environment:
+      # 写死的数据库配置（与config.production.yml一致）
+      MYSQL_ROOT_PASSWORD: nest_admin_2024_secure
+      MYSQL_DATABASE: nest_admin
+      # 移除 MYSQL_USER，因为它不能设置为 root
+    # ✅ 备注：容器内部MySQL运行在3306端口，但不对外暴露
+    #  - 其他容器通过 mysql:3306 访问
+    #  - 宿主机通过 127.0.0.1:13306 访问
+    #  - 外部网络无法直接访问MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql # 持久化存储数据库数据
+    networks:
+      - backend # 连接到自定义网络 backend
+
+  redis:
+    image: redis:7.0-alpine # 使用固定版本的 Redis
+    container_name: redis_cache
+    restart: unless-stopped
+    ports:
+      - '6379:6379' # 映射Redis端口到宿主机
+    command: >
+      redis-server --requirepass redis_admin_password_123
+    # 移除端口暴露，仅在Docker内部网络可访问
+    volumes:
+      - redis_data:/data # 持久化 Redis 数据
+    networks:
+      - backend
+
+# -----------------------
+# 定义数据卷（用于持久化）
+# -----------------------
+volumes:
+  mysql_data: # MySQL 数据卷，用于存储数据库文件
+  redis_data: # Redis 数据卷，用于缓存持久化
+
+# -----------------------
+# 定义自定义网络
+# -----------------------
+networks:
+  backend:
+    driver: bridge # bridge 模式允许容器间相互访问
