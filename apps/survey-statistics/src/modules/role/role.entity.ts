@@ -7,7 +7,7 @@ import {
 	UpdateDateColumn,
 	OneToMany,
 } from "typeorm";
-import { UserRole } from "@/modules/user/userRole.entity";
+import { UserRole } from "@/modules/user/entities/userRole.entity";
 
 @Entity()
 export class Role {

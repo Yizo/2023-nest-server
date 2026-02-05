@@ -1,7 +1,7 @@
 export function formatPage(
 	page: number | string,
 	pageSize: number | string,
-	{ maxPageSize = 100 }: { maxPageSize?: number } = {}
+	{ maxPageSize = 100 }: { maxPageSize?: number } = {},
 ) {
 	let pageNum = typeof page === "string" ? Number.parseInt(page, 10) : page ?? 1;
 	let pageSizeNum = typeof pageSize === "string" ? Number.parseInt(pageSize, 10) : pageSize ?? 10;
@@ -16,4 +16,8 @@ export function formatPage(
 		page: pageNum,
 		pageSize: pageSizeNum,
 	};
+}
+
+export interface FormatOptions {
+	maxPageSize?: number;
 }

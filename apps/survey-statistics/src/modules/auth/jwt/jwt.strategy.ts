@@ -22,9 +22,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 					return request.headers[TOKEN_KEY] ?? "";
 				},
 			]),
-			// 控制是否忽略 JWT token 的过期时间
-			ignoreExpiration: false,
-			// 控制是否将请求对象传递给验证回调函数
+			// 不验证 JWT token 的过期时间, 转为验证 Redis 中的 token 是否过期
+			ignoreExpiration: true,
+			// 将请求对象传递给验证回调函数
 			passReqToCallback: true,
 			secretOrKey: configService.get("jwt").secret,
 		});
@@ -47,7 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 			throw new UnauthorizedException("用户不存在");
 		}
 		// 刷新token时间
-		this.redisService.set(
+		await this.redisService.set(
 			`token:${payload.sub}`,
 			token,
 			this.configService.get("redis").expiration * 1000,

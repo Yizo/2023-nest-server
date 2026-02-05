@@ -1,20 +1,19 @@
 import { PartialType, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEmail, IsOptional, MinLength, IsString } from "class-validator";
+import { IsEmail, IsOptional, IsString, IsNotEmpty } from "class-validator";
 import { CreateUserDto } from "./create-user.dto";
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
+	@IsNotEmpty({ message: "用户ID不能为空" })
+	@IsString({ message: "用户ID必须是字符串" })
+	id: string;
+
 	@IsOptional()
-	@IsString()
+	@IsString({ message: "账户名必须是字符串" })
 	@ApiPropertyOptional({ description: "账户名" })
 	username?: string;
 
 	@IsOptional()
-	@IsEmail()
+	@IsEmail({}, { message: "邮箱地址不合法" })
 	@ApiPropertyOptional({ description: "邮箱地址" })
 	email?: string;
-
-	@IsOptional()
-	@MinLength(6)
-	@ApiPropertyOptional({ description: "密码" })
-	password?: string;
 }

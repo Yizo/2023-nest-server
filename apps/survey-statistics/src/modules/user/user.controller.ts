@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger"
 import { UserService } from "./user.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
-import { formatPage } from "@base/utils";
+import { PagePipe } from "@/common/pipes/page.pipe";
 
 @Controller("users")
 @ApiTags("users")
@@ -15,22 +15,27 @@ export class UserController {
 	@ApiOperation({ summary: "分页查询用户" })
 	@ApiQuery({ name: "page", required: false })
 	@ApiQuery({ name: "pageSize", required: false })
-	async list(@Query("page") page = "1", @Query("pageSize") pageSize = "10") {
-		const { page: pageNum, pageSize: pageSizeNum } = formatPage(page, pageSize);
-		const { data, total } = await this.userService.list(pageNum, pageSizeNum);
+	async list(@Query(new PagePipe()) pageInfo: { page: number; pageSize: number }) {
+		const { data, total } = await this.userService.list(pageInfo.page, pageInfo.pageSize);
 		return {
 			data,
 			total,
-			page: pageNum,
-			pageSize: pageSizeNum,
+			page: pageInfo.page,
+			pageSize: pageInfo.pageSize,
 		};
 	}
 
-	@Get(":id")
+	@Get("/detail/:id")
 	@ApiOperation({ summary: "查询单个用户" })
 	async detail(@Param("id") id: string) {
 		return await this.userService.findById(id);
-	}
+    }
+
+    // 查询用户详情
+    @Get("/find-user-detail/:id")
+    async findUserDetail(@Param("id") id: string) {
+        return await this.userService.findUserDetail(id);
+    }
 
 	@Post("/create")
 	@ApiOperation({ summary: "创建用户" })
@@ -38,13 +43,13 @@ export class UserController {
 		return this.userService.create(dto);
 	}
 
-	@Post(":id")
+	@Post("/update")
 	@ApiOperation({ summary: "修改用户信息" })
-	update(@Param("id") id: string, @Body() dto: UpdateUserDto) {
-		return this.userService.update(id, dto);
+	update(@Body() dto: UpdateUserDto) {
+		return this.userService.update(dto);
 	}
 
-	@Post(":id")
+	@Post("/remove/:id")
 	@ApiOperation({ summary: "删除用户" })
 	remove(@Param("id") id: string) {
 		return this.userService.remove(id);

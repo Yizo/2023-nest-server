@@ -31,102 +31,99 @@ export class QueryBuilderHelperImpl<T extends ObjectLiteral> implements QueryBui
 	 * @returns 配置完整的SelectQueryBuilder实例，可进一步自定义或直接执行
 	 */
 	buildQuery(options: QueryOptions, debug = false): SelectQueryBuilder<T> {
-		const { joins, conditions, orderBy, groupBy, having, withDeleted, select } = options;
+		const { joins, conditions, orderBy, groupBy, having, withDeleted, select, alias: customAlias } = options;
 		// 获取实体表名作为查询别名
-		const alias = this.repository.metadata.tableName;
+		const alias = customAlias || this.repository.metadata.tableName;
 		// 创建基础查询构建器
 		let queryBuilder = this.repository.createQueryBuilder(alias);
 
-		// 处理软删除：如果withDeleted为true，查询包含已软删除的记录
-		if (withDeleted) {
-			queryBuilder = queryBuilder.withDeleted();
-		}
+	// 处理软删除：如果withDeleted为true，查询包含已软删除的记录
+	if (withDeleted) {
+		queryBuilder = queryBuilder.withDeleted();
+	}
 
-		// 处理字段选择：指定查询字段以提高性能
-		if (select && select.length > 0) {
-			const selectFields = select.map((field) => {
-				// 支持点号分隔的字段，如 'user.name' 或 'profile.email'
-				return field.includes(".") ? field : `${alias}.${field}`;
-			});
-			queryBuilder = queryBuilder.select(selectFields);
-		}
+	// 处理关联关系：根据JoinRelation配置添加JOIN子句
+	if (joins && joins.length > 0) {
+		for (const join of joins) {
+			const joinMethod = join.type;
+			// 构建关联路径
+			// 如果 property 包含点号（如 'roles.permissions'），说明是多层级关联，直接使用
+			// 否则添加主表别名前缀（如 'user.profile'）
+			const relationPath = join.property.includes(".")
+				? join.property
+				: `${alias}.${join.property}`;
 
-		// 处理关联关系：根据JoinRelation配置添加JOIN子句
-		if (joins && joins.length > 0) {
-			for (const join of joins) {
-				const joinMethod = join.type;
-				// 构建关联路径
-				// 如果 property 包含点号（如 'roles.permissions'），说明是多层级关联，直接使用
-				// 否则添加主表别名前缀（如 'user.profile'）
-				const relationPath = join.property.includes(".")
-					? join.property
-					: `${alias}.${join.property}`;
-
-				// 根据关联类型执行相应的JOIN操作
-				switch (joinMethod) {
-					case "leftJoin":
-						// 左连接，不加载关联实体数据
-						// 如果有自定义条件则使用，否则让TypeORM自动处理关联
-						if (join.condition) {
-							queryBuilder = queryBuilder.leftJoin(
-								relationPath,
-								join.alias,
-								join.condition
-							);
-						} else {
-							queryBuilder = queryBuilder.leftJoin(relationPath, join.alias);
-						}
-						break;
-					case "innerJoin":
-						// 内连接，不加载关联实体数据
-						// 如果有自定义条件则使用，否则让TypeORM自动处理关联
-						if (join.condition) {
-							queryBuilder = queryBuilder.innerJoin(
-								relationPath,
-								join.alias,
-								join.condition
-							);
-						} else {
-							queryBuilder = queryBuilder.innerJoin(relationPath, join.alias);
-						}
-						break;
-					case "leftJoinAndSelect":
-						// 左连接并加载关联实体数据（结果中包含关联对象）
-						// 如果有自定义条件则使用，否则让TypeORM自动处理关联
-						if (join.condition) {
-							queryBuilder = queryBuilder.leftJoinAndSelect(
-								relationPath,
-								join.alias,
-								join.condition
-							);
-						} else {
-							queryBuilder = queryBuilder.leftJoinAndSelect(relationPath, join.alias);
-						}
-						break;
-					case "innerJoinAndSelect":
-						// 内连接并加载关联实体数据（结果中包含关联对象）
-						// 如果有自定义条件则使用，否则让TypeORM自动处理关联
-						if (join.condition) {
-							queryBuilder = queryBuilder.innerJoinAndSelect(
-								relationPath,
-								join.alias,
-								join.condition
-							);
-						} else {
-							queryBuilder = queryBuilder.innerJoinAndSelect(
-								relationPath,
-								join.alias
-							);
-						}
-						break;
-				}
+			// 根据关联类型执行相应的JOIN操作
+			switch (joinMethod) {
+				case "leftJoin":
+					// 左连接，不加载关联实体数据
+					// 如果有自定义条件则使用，否则让TypeORM自动处理关联
+					if (join.condition) {
+						queryBuilder = queryBuilder.leftJoin(
+							relationPath,
+							join.alias,
+							join.condition,
+						);
+					} else {
+						queryBuilder = queryBuilder.leftJoin(relationPath, join.alias);
+					}
+					break;
+				case "innerJoin":
+					// 内连接，不加载关联实体数据
+					// 如果有自定义条件则使用，否则让TypeORM自动处理关联
+					if (join.condition) {
+						queryBuilder = queryBuilder.innerJoin(
+							relationPath,
+							join.alias,
+							join.condition,
+						);
+					} else {
+						queryBuilder = queryBuilder.innerJoin(relationPath, join.alias);
+					}
+					break;
+				case "leftJoinAndSelect":
+					// 左连接并加载关联实体数据（结果中包含关联对象）
+					// 如果有自定义条件则使用，否则让TypeORM自动处理关联
+					if (join.condition) {
+						queryBuilder = queryBuilder.leftJoinAndSelect(
+							relationPath,
+							join.alias,
+							join.condition,
+						);
+					} else {
+						queryBuilder = queryBuilder.leftJoinAndSelect(relationPath, join.alias);
+					}
+					break;
+				case "innerJoinAndSelect":
+					// 内连接并加载关联实体数据（结果中包含关联对象）
+					// 如果有自定义条件则使用，否则让TypeORM自动处理关联
+					if (join.condition) {
+						queryBuilder = queryBuilder.innerJoinAndSelect(
+							relationPath,
+							join.alias,
+							join.condition,
+						);
+					} else {
+						queryBuilder = queryBuilder.innerJoinAndSelect(
+							relationPath,
+							join.alias,
+						);
+					}
+					break;
 			}
 		}
+	}
 
-		// 处理查询条件：按照索引优化顺序应用WHERE条件
-		if (conditions && conditions.length > 0) {
-			this.applyConditionsOptimized(queryBuilder, conditions, alias);
-		}
+	// 处理字段选择：指定查询字段以提高性能
+	// 注意：必须在 joins 之后处理，这样才能覆盖 joinAndSelect 自动添加的字段
+	if (select && select.length > 0) {
+		queryBuilder = queryBuilder.select(select);
+	}
+
+	// 处理查询条件：按照索引优化顺序应用WHERE条件
+	if (conditions && conditions.length > 0) {
+		this.applyConditionsOptimized(queryBuilder, conditions, alias);
+	}
 
 		// 处理分组
 		if (groupBy && groupBy.length > 0) {
@@ -174,7 +171,7 @@ export class QueryBuilderHelperImpl<T extends ObjectLiteral> implements QueryBui
 	private applyConditionsOptimized(
 		queryBuilder: SelectQueryBuilder<T>,
 		conditions: QueryCondition[],
-		alias: string
+		alias: string,
 	): void {
 		// 按照索引优化优先级排序条件
 		const sortedConditions = this.sortConditionsByIndexPriority(conditions);
@@ -238,7 +235,7 @@ export class QueryBuilderHelperImpl<T extends ObjectLiteral> implements QueryBui
 		queryBuilder: SelectQueryBuilder<T>,
 		condition: QueryCondition,
 		alias: string,
-		isHaving: boolean
+		isHaving: boolean,
 	): void {
 		const { field, operator, value, or } = condition;
 		// 清理字段名中的特殊字符，生成安全的参数名
@@ -322,7 +319,7 @@ export class QueryBuilderHelperImpl<T extends ObjectLiteral> implements QueryBui
 		queryBuilder: SelectQueryBuilder<T>,
 		conditions: QueryCondition[],
 		alias: string,
-		isHaving = false
+		isHaving = false,
 	): void {
 		for (const condition of conditions) {
 			this.applySingleCondition(queryBuilder, condition, alias, isHaving);
@@ -386,17 +383,18 @@ export class QueryBuilderHelperImpl<T extends ObjectLiteral> implements QueryBui
 		options: QueryOptions,
 		page: number,
 		pageSize: number,
-		debug = false
+		debug = false,
 	): Promise<PaginatedQueryResult<T>> {
-		const { joins } = options;
+		const { joins, alias: customAlias } = options;
+		const alias = customAlias || this.repository.metadata.tableName;
 		const queryBuilder = this.buildQuery(options);
 
 		// 计算总数：克隆查询构建器，移除分页和排序，执行COUNT查询
 		// 判断是否有 JOIN，如果有则使用 COUNT(DISTINCT)，否则使用普通 COUNT
 		const hasJoins = joins && joins.length > 0;
 		const countExpression = hasJoins
-			? `COUNT(DISTINCT ${this.repository.metadata.tableName}.id)`
-			: `COUNT(${this.repository.metadata.tableName}.id)`;
+			? `COUNT(DISTINCT ${alias}.id)`
+			: `COUNT(${alias}.id)`;
 
 		const countQuery = queryBuilder.clone().select(countExpression, "count");
 
@@ -473,15 +471,16 @@ export class QueryBuilderHelperImpl<T extends ObjectLiteral> implements QueryBui
 	 * ```
 	 */
 	async count(options: QueryOptions): Promise<number> {
-		const { joins } = options;
+		const { joins, alias: customAlias } = options;
+		const alias = customAlias || this.repository.metadata.tableName;
 		const queryBuilder = this.buildQuery(options);
 
 		// 克隆查询构建器，移除不必要的子句，只保留WHERE条件
 		// 判断是否有 JOIN，如果有则使用 COUNT(DISTINCT)，否则使用普通 COUNT
 		const hasJoins = joins && joins.length > 0;
 		const countExpression = hasJoins
-			? `COUNT(DISTINCT ${this.repository.metadata.tableName}.id)`
-			: `COUNT(${this.repository.metadata.tableName}.id)`;
+			? `COUNT(DISTINCT ${alias}.id)`
+			: `COUNT(${alias}.id)`;
 
 		const countQuery = queryBuilder.clone().select(countExpression, "count");
 

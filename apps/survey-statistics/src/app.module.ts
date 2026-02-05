@@ -46,6 +46,7 @@ import { CustomValidationPipe } from "./common/pipes/validation.pipe";
 					logger: db.logger,
 					createForeignKeyConstraints: db.createForeignKeyConstraints,
 					autoLoadEntities: true,
+					cache: true,
 					entities: [__dirname + "/**/*.entity{.ts,.js}"],
 				};
 			},

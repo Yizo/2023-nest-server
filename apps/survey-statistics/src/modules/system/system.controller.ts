@@ -3,6 +3,7 @@ import { SystemService } from "./system.service";
 import { CreateSystemDto } from "./dto/create-system.dto";
 import { UpdateSystemDto } from "./dto/update-system.dto";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { Public } from "@/common/decorators/public.decorator";
 
 @Controller("system")
 export class SystemController {
@@ -10,6 +11,7 @@ export class SystemController {
 
 	// 查询是否已初始化
 	@Get("/is-initialized")
+	@Public()
 	@ApiOperation({ summary: "查询是否已初始化" })
 	@ApiResponse({ status: 200, description: "返回是否已初始化" })
 	isInitialized() {
@@ -18,6 +20,7 @@ export class SystemController {
 
 	// 系统初始化
 	@Post("/init")
+	@Public()
 	@ApiOperation({ summary: "系统初始化" })
 	@ApiResponse({ status: 200, description: "系统初始化成功" })
 	create(@Body() createSystemDto: CreateSystemDto) {
