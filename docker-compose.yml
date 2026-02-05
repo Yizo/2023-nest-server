@@ -1,0 +1,111 @@
+# ==========================================
+# Monorepo 统一 Docker Compose 配置
+# 用于本地开发和集成测试
+# ==========================================
+version: '3.8'
+
+services:
+  # ==========================================
+  # 应用服务
+  # ==========================================
+  
+  # Survey Statistics 应用
+  survey-statistics:
+    build:
+      context: .
+      dockerfile: apps/survey-statistics/docker/Dockerfile
+    container_name: survey-statistics
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+    volumes:
+      # 挂载日志目录
+      - ./apps/survey-statistics/logs:/app/dist/apps/survey-statistics/src/logs
+    networks:
+      - app-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Nest Admin 应用（如果需要同时运行）
+  # nest-admin:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/nest-admin/docker/Dockerfile
+  #   container_name: nest-admin
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NODE_ENV=production
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_started
+
+  # ==========================================
+  # 基础服务
+  # ==========================================
+  
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: monorepo-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123456
+      - MYSQL_DATABASE=survey_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=1000
+      --innodb_buffer_pool_size=256M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: monorepo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    command: redis-server --appendonly yes --requirepass redis123456
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

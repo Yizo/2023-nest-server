@@ -1,27 +1,72 @@
-version: '3.9'
+version: '3.8'
+
 services:
+  # Survey Statistics 应用
   survey-statistics:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: apps/survey-statistics/docker/Dockerfile
-    image: survey-statistics:latest
-    restart: always
-    environment:
-      NODE_ENV: production
-      DB_TYPE: mysql
-      DB_HOST: 39.96.165.134
-      DB_PORT: 13306
-      DB_USERNAME: root
-      DB_PASSWORD: 8Kytb8EzbAFrbtyC
-      DB_DATABASE: survey_statistics
-      DB_TIMEZONE: +08:00
-      DB_SYNCHRONIZE: 'false'
-      DB_LOGGING: 'false'
-      REDIS_HOST: 39.96.165.134
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: 123456
-      REDIS_EXPIRATION: 3600
-      JWT_SECRET: prod_secret
-      JWT_EXPIRATION: 1h
+    container_name: survey-statistics-app
+    restart: unless-stopped
     ports:
-      - 3003:3003
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+    volumes:
+      # 挂载日志目录（可选）
+      - ./logs:/app/dist/apps/survey-statistics/src/logs
+      # 挂载配置文件（如果需要动态修改）
+      # - ./config:/app/dist/apps/survey-statistics/src/config
+    networks:
+      - survey-network
+    depends_on:
+      - mysql
+      - redis
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: survey-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=survey_db
+      - MYSQL_USER=survey_user
+      - MYSQL_PASSWORD=survey_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 如果有初始化脚本
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - survey-network
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: survey-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - survey-network
+    command: redis-server --appendonly yes
+
+networks:
+  survey-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "outDir": "../../dist",
+    "baseUrl": "../../",
+    "paths": {
+      "@/*": ["apps/nest-admin/src/*"],
+      "@base/commons": ["packages/commons"],
+      "@base/commons/*": ["packages/commons/*"],
+      "@base/utils": ["packages/utils"],
+      "@base/utils/*": ["packages/utils/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "config/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
+}

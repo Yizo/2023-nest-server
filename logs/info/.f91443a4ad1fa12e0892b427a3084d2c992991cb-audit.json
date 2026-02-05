@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/yizuohua/Desktop/git/2023-nest-server/logs/info/.f91443a4ad1fa12e0892b427a3084d2c992991cb-audit.json",
+    "files": [
+        {
+            "date": 1770289080168,
+            "name": "/Users/yizuohua/Desktop/git/2023-nest-server/logs/info/application-2026-02-05.log",
+            "hash": "8de44a416932ecdbf46570967e0ad65c13ef02169481378106265a0b2f348923"
+        }
+    ],
+    "hashType": "sha256"
+}

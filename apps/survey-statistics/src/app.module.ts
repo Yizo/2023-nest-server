@@ -9,7 +9,7 @@ import { SurveyModule } from "./modules/survey/survey.module";
 import { UserModule } from "./modules/user/user.module";
 import { RedisModule } from "./modules/redis/redis.module";
 import { SystemModule } from "./modules/system/system.module";
-import configuration from "../config/configuration";
+import configuration from "./config/configuration";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
