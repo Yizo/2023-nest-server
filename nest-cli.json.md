@@ -12,41 +12,6 @@
 
 ## 🔧 全局配置
 
-### `$schema`
-```json
-"$schema": "https://json.schemastore.org/nest-cli"
-```
-
-**说明：** JSON Schema 定义，提供 IDE 智能提示和配置验证
-
-**作用：**
-- 在编辑器中提供自动完成功能
-- 验证配置文件的正确性
-- 显示配置项的文档提示
-
-**是否必需：** 可选，但强烈推荐
-
----
-
-### `collection`
-```json
-"collection": "@nestjs/schematics"
-```
-
-**说明：** 指定用于生成代码的原理图集合
-
-**作用：**
-- 定义 `nest generate` 命令使用的模板集合
-- NestJS 官方使用 `@nestjs/schematics`
-
-**可选值：**
-- `@nestjs/schematics` - NestJS 官方模板（默认）
-- 自定义原理图集合
-
-**是否修改：** 通常不需要修改
-
----
-
 ### `sourceRoot`
 ```json
 "sourceRoot": "apps/survey-statistics/src"
@@ -518,14 +483,14 @@ nest generate library my-lib
 
 ### Q3: 修改配置后需要重启吗？
 
-**A:** 
+**A:**
 - 修改 `compilerOptions` - 需要重新构建
 - 修改 `assets` - 需要重启 watch 模式
 - 修改 `generateOptions` - 立即生效（下次生成时）
 
 ### Q4: Monorepo 和标准模式如何切换？
 
-**A:** 
+**A:**
 - 标准 → Monorepo: 使用 `nest generate app`
 - Monorepo → 标准: 不建议，需要手动迁移
 

@@ -16,12 +16,6 @@
 		"noImplicitAny": false,
 		"strictBindCallApply": false,
 		"forceConsistentCasingInFileNames": false,
-		"noFallthroughCasesInSwitch": false,
-		"paths": {
-			"@base/commons": ["packages/commons"],
-			"@base/commons/*": ["packages/commons/*"],
-			"@base/utils": ["packages/utils"],
-			"@base/utils/*": ["packages/utils/*"]
-		}
+		"noFallthroughCasesInSwitch": false
 	}
 }
