@@ -25,17 +25,11 @@ export class UserController {
 		};
 	}
 
+	// 查询用户详情
 	@Get("/detail/:id")
-	@ApiOperation({ summary: "查询单个用户" })
-	async detail(@Param("id") id: string) {
-		return await this.userService.findById(id);
-    }
-
-    // 查询用户详情
-    @Get("/find-user-detail/:id")
-    async findUserDetail(@Param("id") id: string) {
-        return await this.userService.findUserDetail(id);
-    }
+	async findUserDetail(@Param("id") id: string) {
+		return await this.userService.findUserDetail(id);
+	}
 
 	@Post("/create")
 	@ApiOperation({ summary: "创建用户" })

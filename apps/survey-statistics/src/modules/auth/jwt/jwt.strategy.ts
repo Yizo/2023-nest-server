@@ -42,7 +42,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		if (cachedToken !== token) {
 			throw new UnauthorizedException(AuthErrorMessages.TOKEN_INVALID);
 		}
-		const user = await this.userService.findById(payload.sub);
+		const user = await this.userService.findUserByIdentifier("id", payload.sub);
 		if (!user) {
 			throw new UnauthorizedException("用户不存在");
 		}

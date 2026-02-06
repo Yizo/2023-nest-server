@@ -22,7 +22,7 @@ export class AuthService {
 	}
 
 	async login(dto: LoginAuthDto) {
-		const user = await this.userService.findByUsername(dto.username);
+		const user = await this.userService.findUserByIdentifier("username", dto.username);
 		if (!user) {
 			throw new UnauthorizedException("用户名或密码错误");
 		}

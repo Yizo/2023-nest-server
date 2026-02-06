@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, QueryBuilder } from "typeorm";
 import * as bcrypt from "bcrypt";
 import { User } from "./entities/user.entity";
-import { Role } from "@/modules/role/role.entity";
+import { Role } from "@/modules/role/entities/role.entity";
 import { UserRole } from "./entities/userRole.entity";
 import { Profile } from "@/modules/profile/profile.entity";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -45,39 +45,13 @@ export class UserService {
 		);
 	}
 
-	async findByUsername(username: string) {
-		const user = await this.userRepository.findOne({
-			where: { username },
-		});
-		if (!user) {
-			throw new BadRequestException("用户不存在");
-		}
-		if (user?.isActive === 0) {
-			throw new BadRequestException("用户已禁用");
-		}
-		return user;
-	}
-
-	async findById(id: string) {
-		const user = await this.userRepository.findOne({
-			where: { id },
-		});
-		if (!user) {
-			throw new BadRequestException("用户不存在");
-		}
-		if (user?.isActive === 0) {
-			throw new BadRequestException("用户已禁用");
-		}
-		return user;
-	}
-
 	// 查询用户详情
 	/**
 	 * 查询用户详情（支持多角色）
 	 * 使用 getRawMany() 处理一对多关系
 	 */
 	async findUserDetail(id: string) {
-		const user = await this.findById(id);
+		const user = await this.findUserByIdentifier("id", id);
 		if (!user) {
 			throw new BadRequestException("用户不存在");
 		}
@@ -248,7 +222,7 @@ export class UserService {
 
 	async update(dto: UpdateUserDto) {
 		const { id } = dto;
-		const user = await this.findById(id);
+		const user = await this.findUserByIdentifier("id", id);
 		if (!user) {
 			throw new BadRequestException("用户不存在");
 		}
@@ -283,10 +257,26 @@ export class UserService {
 
 	async remove(id: string) {
 		// 检查用户是否存在
-		const user = await this.findById(id);
+		const user = await this.findUserByIdentifier("id", id);
 		if (!user) return false;
 		// 软删除
 		await this.userRepository.softDelete(id);
 		return true;
 	}
+
+	/*************************静态方法, 不提供路由访问*****************************/
+	async findUserByIdentifier(key: "id" | "username", value: string) {
+		const user = await this.userRepository.findOne({
+			where: { [key]: value },
+			select: ["id", "username", "password"],
+		});
+		if (!user) {
+			throw new BadRequestException("用户不存在");
+		}
+		if (user?.isActive === 0) {
+			throw new BadRequestException("用户已禁用");
+		}
+		return user;
+	}
+	/*************************静态方法, 不提供路由访问*****************************/
 }
