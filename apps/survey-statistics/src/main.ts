@@ -34,18 +34,8 @@ async function bootstrap() {
   })
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : appConfig.port.http
-  const isDevelopment = process.env.NODE_ENV === 'development'
 
-  try {
-    await app.listen(port)
-  } catch (error: any) {
-    if (error.code === 'EADDRINUSE' && isDevelopment) {
-      console.log(`Port ${port} is busy, trying port ${port + 1}...`)
-      await app.listen(port + 1)
-    } else {
-      throw error
-    }
-  }
+  await app.listen(port)
 
   const server = app.getHttpServer()
   const actualPort = server.address().port

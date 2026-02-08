@@ -22,7 +22,8 @@
     "admin:build": "nest build nest-admin",
     "admin:start": "node dist/apps/nest-admin/src/main",
     "admin:debug": "nest start nest-admin --debug --watch",
-    "survey:dev": "NODE_ENV=development nest start survey-statistics --watch",
+    "survey:dev": "NODE_ENV=development node scripts/kill-port.js 3003 && nest start survey-statistics --watch",
+    "survey:dev:safe": "NODE_ENV=development PORT=3003 nest start survey-statistics --watch --preserveWatchOutput",
     "survey:build": "nest build survey-statistics",
     "survey:start": "node dist/apps/survey-statistics/src/main",
     "survey:debug": "nest start survey-statistics --debug --watch"
