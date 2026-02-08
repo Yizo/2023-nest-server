@@ -16,7 +16,7 @@ const events = {
   ClientMessage: 'client:message',
 }
 
-@WebSocketGateway(4000, {
+@WebSocketGateway({
   transports: ['websocket'],
   cors: {
     origin: '*',
