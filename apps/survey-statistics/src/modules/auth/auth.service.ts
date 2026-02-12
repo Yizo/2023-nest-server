@@ -41,7 +41,14 @@ export class AuthService {
 
 		const expiration = this.configService.get("redis").expiration;
 
-		await this.redisService.set("token:" + userId, accessToken, expiration * 1000);
+		const cachedToken = await this.redisService.set(
+			"token:" + userId,
+			accessToken,
+			expiration * 1000,
+		);
+
+		console.log(cachedToken, "cachedToken");
+
 		return {
 			accessToken,
 			user: {

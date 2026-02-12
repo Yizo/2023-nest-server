@@ -3,9 +3,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, QueryBuilder } from "typeorm";
 import { Role } from "./entities/role.entity";
 import { RoleType } from "@/enums/role";
-import { QueryBuilderFactory, QueryBuilderHelper } from "@base/commons";
+import { QueryBuilderFactory, QueryBuilderHelper, QueryCondition } from "@base/commons";
 import { CreateRoleDto } from "./dto/create-role.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
+import { ListRoleDto } from "./dto/list-role.dto";
 
 @Injectable()
 export class RoleService {
@@ -20,9 +21,23 @@ export class RoleService {
 		this.roleBuilder = this.roleRepository.createQueryBuilder("role");
 	}
 
-	async findAll(page: number, pageSize: number) {
+	async findAll(listRoleDto: ListRoleDto) {
+		const { page, pageSize, name, code, description } = listRoleDto;
+
+		const conditions: QueryCondition[] = [];
+		if (name) {
+			conditions.push({ field: "name", operator: "like", value: name });
+		}
+		if (code) {
+			conditions.push({ field: "code", operator: "like", value: code });
+		}
+		if (description) {
+			conditions.push({ field: "description", operator: "like", value: description });
+		}
+
 		return await this.roleQueryBuilder.findPaginated(
 			{
+				conditions,
 				orderBy: [{ field: "updatedAt", direction: "DESC" }],
 			},
 			page,

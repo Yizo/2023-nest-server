@@ -4,6 +4,7 @@ import { RoleService } from "./role.service";
 import { PagePipe } from "@/common/pipes/page.pipe";
 import { CreateRoleDto } from "./dto/create-role.dto";
 import { UpdateRoleDto } from "./dto/update-role.dto";
+import { ListRoleDto } from "./dto/list-role.dto";
 
 @Controller("roles")
 @ApiTags("roles")
@@ -12,8 +13,8 @@ export class RoleController {
 	constructor(private readonly roleService: RoleService) {}
 
 	@Get("/list")
-	async findAll(@Query(new PagePipe()) pageInfo: { page: number; pageSize: number }) {
-		const { data, total } = await this.roleService.findAll(pageInfo.page, pageInfo.pageSize);
+	async findAll(@Query(new PagePipe()) pageInfo: ListRoleDto) {
+		const { data, total } = await this.roleService.findAll(pageInfo);
 		return {
 			data,
 			total,
@@ -30,10 +31,10 @@ export class RoleController {
 	@Post("/update")
 	async update(@Body() updateRoleDto: UpdateRoleDto) {
 		return this.roleService.update(updateRoleDto);
-    }
+	}
 
-    @Post("/remove/:id")
-    async remove(@Param("id") id: number) {
-        return this.roleService.remove(id);
-    }
+	@Post("/remove/:id")
+	async remove(@Param("id") id: number) {
+		return this.roleService.remove(id);
+	}
 }

@@ -40,7 +40,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 			});
 		}
 		if (cachedToken !== token) {
-			throw new UnauthorizedException(AuthErrorMessages.TOKEN_INVALID);
+			throw new UnauthorizedException({
+				message: AuthErrorMessages.TOKEN_INVALID,
+				code: AuthErrorCodes.TOKEN_EXPIRED,
+			});
 		}
 		const user = await this.userService.findUserByIdentifier("id", payload.sub);
 		if (!user) {
