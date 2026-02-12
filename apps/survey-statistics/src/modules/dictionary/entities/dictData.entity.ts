@@ -34,7 +34,7 @@ export class DictData {
 		comment: "排序, 越小越靠前",
 		default: 0,
 	})
-	sort!: number;
+	sortOrder!: number;
 
 	@CreateDateColumn({
 		comment: "创建时间",

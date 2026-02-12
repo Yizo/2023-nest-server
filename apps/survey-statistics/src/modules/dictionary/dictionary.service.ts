@@ -3,16 +3,19 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, QueryBuilder } from "typeorm";
 import { DictType } from "./entities/dictType.entity";
 import { DictData } from "./entities/dictData.entity";
-import { QueryBuilderFactory, QueryBuilderHelper } from "@base/commons";
+import { QueryBuilderFactory, QueryBuilderHelper, QueryCondition } from "@base/commons";
 import { CreateDictTypeDto, UpdateDictTypeDto, GetDictTypeDto } from "./dto/dictType";
-import { CreateDictDataDto, UpdateDictDataDto, GetDictDataDto } from "./dto/dictData";
+import {
+	CreateDictDataDto,
+	UpdateDictDataDto,
+	GetDictDataDto,
+	DeleteDictDataDto,
+} from "./dto/dictData";
 
 @Injectable()
 export class DictionaryService {
 	private dictTypeQueryBuilder: QueryBuilderHelper<DictType>;
 	private dictDataQueryBuilder: QueryBuilderHelper<DictData>;
-	private dictTypeBuilder: QueryBuilder<DictType>;
-	private dictDataBuilder: QueryBuilder<DictData>;
 	constructor(
 		@InjectRepository(DictType)
 		private readonly dictTypeRepository: Repository<DictType>,
@@ -26,16 +29,14 @@ export class DictionaryService {
 		this.dictDataQueryBuilder = this.queryBuilderFactory.createFromRepository(
 			this.dictDataRepository,
 		);
-		this.dictTypeBuilder = this.dictTypeRepository.createQueryBuilder("dictType");
-		this.dictDataBuilder = this.dictDataRepository.createQueryBuilder("dictData");
 	}
 	/**
-	 * 字典类型
+	 * 分页查询字典类型列表
 	 */
 	async findAllTypes(query: GetDictTypeDto) {
 		const { page, pageSize, name, status, sort } = query;
 
-		const conditions = [];
+		const conditions: QueryCondition[] = [];
 		const orderBy = [];
 		if (name) {
 			conditions.push({ field: "dictType.name", operator: "like", value: `%${name}%` });
@@ -58,42 +59,99 @@ export class DictionaryService {
 		);
 	}
 	async createType(createTypeDto: CreateDictTypeDto) {
-		return await this.dictTypeBuilder.insert().values(createTypeDto).execute();
+		return await this.dictTypeRepository.insert(createTypeDto);
 	}
 	async updateType(updateTypeDto: UpdateDictTypeDto) {
 		const { id } = updateTypeDto;
-		await this.dictTypeBuilder.update().set(updateTypeDto).where("id = :id", { id }).execute();
+		await this.dictTypeRepository
+			.createQueryBuilder("dictType")
+			.update()
+			.set(updateTypeDto)
+			.where("id = :id", { id })
+			.execute();
 	}
 	async deleteType(id: number) {
-		return await this.dictTypeBuilder.delete().where("id = :id", { id }).execute();
+		return await this.dictTypeRepository
+			.createQueryBuilder("dictType")
+			.delete()
+			.where("id = :id", { id })
+			.execute();
 	}
 
-	/**字典数据*/
+	// 查询字典类型
+	async findTypeById(id: number) {
+		return await this.dictTypeRepository.findOne({
+			where: { id },
+		});
+	}
+
+	/**分页查询字典数据*/
 	async findAllData(query: GetDictDataDto) {
-		const { page, pageSize, name, value, status, sort } = query;
+		const { page, pageSize, name, value, status, sort, typeId } = query;
+		const conditions: QueryCondition[] = [
+			{
+				field: "dictData.typeId",
+				operator: "eq",
+				value: typeId,
+			},
+		];
+		const orderBy = [];
+		if (name) {
+			conditions.push({ field: "dd.name", operator: "like", value: `%${name}%` });
+		}
+		if (value) {
+			conditions.push({ field: "dd.value", operator: "like", value: `%${value}%` });
+		}
+		if (status) {
+			conditions.push({ field: "dd.status", operator: "eq", value: status });
+		}
+		if (sort) {
+			orderBy.push({ field: "dd.updatedAt", direction: sort.toUpperCase() });
+		}
 		return await this.dictDataQueryBuilder.findPaginated(
 			{
-				alias: "dictData",
-				joins: [{ property: "dictData.dictType", alias: "dictType", type: "leftJoin" }],
-				conditions: [
-					{ field: "dictData.name", operator: "like", value: `%${name}%` },
-					{ field: "dictData.value", operator: "like", value: `%${value}%` },
-					{ field: "dictData.status", operator: "eq", value: status },
-					{ field: "dictData.sort", operator: "eq", value: sort },
-				],
-				orderBy: [{ field: "dictData.sort", direction: "ASC" }],
+				alias: "dd",
+				conditions,
+				orderBy,
 			},
 			page,
 			pageSize,
 		);
 	}
 	async createData(createDataDto: CreateDictDataDto) {
-		return await this.dictDataRepository.create(createDataDto);
+		const dictType = await this.findTypeById(createDataDto.typeId);
+		if (!dictType) {
+			throw new BadRequestException("字典类型不存在");
+		}
+		return await this.dictDataRepository
+			.createQueryBuilder("dictData")
+			.insert()
+			.values(createDataDto)
+			.execute();
 	}
-	async updateData(id: number, updateDataDto: UpdateDictDataDto) {
-		return await this.dictDataRepository.update(id, updateDataDto);
+	async updateData(updateDataDto: UpdateDictDataDto) {
+		const { id } = updateDataDto;
+		const dictType = await this.findTypeById(updateDataDto.typeId);
+		if (!dictType) {
+			throw new BadRequestException("字典类型不存在");
+		}
+		return await this.dictDataRepository
+			.createQueryBuilder("dictData")
+			.update()
+			.set(updateDataDto)
+			.where("id = :id", { id })
+			.execute();
 	}
-	async deleteData(id: number) {
-		return await this.dictDataRepository.delete(id);
+	async deleteData(deleteDataDto: DeleteDictDataDto) {
+		const { id, typeId } = deleteDataDto;
+		const dictType = await this.findTypeById(typeId);
+		if (!dictType) {
+			throw new BadRequestException("字典类型不存在");
+		}
+		return await this.dictDataRepository
+			.createQueryBuilder("dictData")
+			.delete()
+			.where("id = :id", { id })
+			.execute();
 	}
 }

@@ -2,7 +2,12 @@ import { Controller, Get, Post, Body, Param, Query } from "@nestjs/common";
 import { DictionaryService } from "./dictionary.service";
 import { PagePipe } from "@/common/pipes/page.pipe";
 import { CreateDictTypeDto, UpdateDictTypeDto, GetDictTypeDto } from "./dto/dictType";
-import { CreateDictDataDto, UpdateDictDataDto, GetDictDataDto } from "./dto/dictData";
+import {
+	CreateDictDataDto,
+	UpdateDictDataDto,
+	GetDictDataDto,
+	DeleteDictDataDto,
+} from "./dto/dictData";
 
 @Controller("dictionary")
 export class DictionaryController {
@@ -14,7 +19,7 @@ export class DictionaryController {
 	 * 2. 筛选条件: 名称, 状态
 	 * 3. 排序: 更新时间
 	 */
-	@Get("/types")
+	@Get("/types/list")
 	async findAllTypes(@Query(new PagePipe()) query: GetDictTypeDto) {
 		const { data, total } = await this.dictionaryService.findAllTypes(query);
 		return {
@@ -43,7 +48,7 @@ export class DictionaryController {
 	 * 2. 筛选条件: 名称, 值, 状态
 	 * 3. 排序: 更新时间
 	 */
-	@Get("/data")
+	@Get("/data/list")
 	async findAllData(@Query(new PagePipe()) query: GetDictDataDto) {
 		return this.dictionaryService.findAllData(query);
 	}
@@ -52,11 +57,11 @@ export class DictionaryController {
 		return this.dictionaryService.createData(createDataDto);
 	}
 	@Post("/data/update")
-	async updateData(@Param("id") id: number, @Body() updateDataDto: UpdateDictDataDto) {
-		return this.dictionaryService.updateData(id, updateDataDto);
+	async updateData(@Body() updateDataDto: UpdateDictDataDto) {
+		return this.dictionaryService.updateData(updateDataDto);
 	}
 	@Post("/data/delete")
-	async deleteData(@Param("id") id: number) {
-		return this.dictionaryService.deleteData(id);
+	async deleteData(@Body() deleteDataDto: DeleteDictDataDto) {
+		return this.dictionaryService.deleteData(deleteDataDto);
 	}
 }

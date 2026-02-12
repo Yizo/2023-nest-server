@@ -23,7 +23,18 @@ export class CreateDictDataDto {
 
 export class UpdateDictDataDto extends CreateDictDataDto {
 	@IsNotEmpty({ message: "字典ID不能为空" })
+	@IsInt({ message: "字典ID必须为整数" })
 	id: number;
+}
+
+export class DeleteDictDataDto {
+	@IsNotEmpty({ message: "字典ID不能为空" })
+	@IsInt({ message: "字典ID必须为整数" })
+	id: number;
+
+	@IsNotEmpty({ message: "字典类型ID不能为空" })
+	@IsInt({ message: "字典类型ID不能为空" })
+	typeId?: number;
 }
 
 export class GetDictDataDto {
