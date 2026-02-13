@@ -42,14 +42,14 @@ export class DictionaryService {
 			.createQueryBuilder("dt")
 			.leftJoin("dt.data", "dd")
 			.select([
-				"dt.id",
-				"dt.name",
-				"dt.status",
-				"dt.description",
-				"dt.createdAt",
-				"dt.updatedAt",
+				"dt.id as id",
+				"dt.name as name",
+				"dt.status as status",
+				"dt.description as description",
+				"dt.createdAt as createdAt",
+				"dt.updatedAt as updatedAt",
+				"COUNT(dd.id) as count",
 			])
-			.addSelect("COUNT(dd.id)", "count")
 			.groupBy("dt.id"); // 按主表分组
 
 		if (name) {
@@ -63,7 +63,7 @@ export class DictionaryService {
 		const orderDirection = sort?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 		queryBuilder.orderBy("dt.updatedAt", orderDirection);
 
-		return await paginateBuilder(queryBuilder, { page, pageSize });
+		return await paginateBuilder(queryBuilder, { page, pageSize, mode: "raw" });
 	}
 	async createType(createTypeDto: CreateDictTypeDto) {
 		return await this.dictTypeRepository.insert(createTypeDto);
@@ -116,9 +116,11 @@ export class DictionaryService {
 		}
 		if (sort) {
 			const orderDirection = sort?.toUpperCase() === "DESC" ? "DESC" : "ASC";
-			queryBuilder.orderBy("dd.updatedAt", orderDirection);
+			// 先把更新时间根据参数排序, 再根据sortOrder降序
+			queryBuilder.orderBy("dd.updatedAt", orderDirection).addOrderBy("dd.sortOrder", "ASC");
 		} else {
-			queryBuilder.orderBy("dd.sortOrder", "ASC");
+			// 默认按sortOrder升序, 再按更新时间降序
+			queryBuilder.orderBy("dd.sortOrder", "ASC").addOrderBy("dd.updatedAt", "DESC");
 		}
 		return await paginateBuilder(queryBuilder, { page, pageSize });
 	}
