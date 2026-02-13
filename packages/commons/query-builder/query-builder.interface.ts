@@ -102,7 +102,8 @@ export interface JoinRelation {
 	 *
 	 * 示例：`profile.is_active = true` （只关联激活的 profile）
 	 */
-	condition?: string;
+    condition?: string;
+    conditions?: QueryCondition[];
 }
 
 /**
@@ -193,12 +194,25 @@ export interface QueryBuilderHelper<T extends ObjectLiteral> {
 	): Promise<PaginatedQueryResult<T>>;
 
 	/**
+	 * 分页查询（原始数据）
+	 * 返回未经映射的原始数据库记录
+	 */
+	findPaginatedRaw(
+		options: QueryOptions,
+		page: number,
+		pageSize: number,
+		debug?: boolean,
+	): Promise<PaginatedQueryResult<T>>;
+
+	/**
 	 * 查询单个结果
 	 * 执行查询并返回第一条匹配的记录
 	 * @param options 查询选项配置
 	 * @returns 第一条匹配的记录，如果没有找到则返回null
 	 */
 	findOne(options: QueryOptions): Promise<T | null>;
+
+	findOneRaw(options: QueryOptions): Promise<T | null>;
 
 	/**
 	 * 统计数量

@@ -43,6 +43,10 @@ export class ResponseTransformInterceptor implements NestInterceptor {
 					response.data = result;
 					return response;
 				}
+				if (Object.prototype.toString.call(result) === "[object Array]") {
+					response.data = result;
+					return response;
+				}
 
 				const { total, page, pageSize, totalPages, code, message, data, ...rest } = result;
 				response.code = code ?? 0;
@@ -62,7 +66,7 @@ export class ResponseTransformInterceptor implements NestInterceptor {
 				}
 				this.logger.log({ response }, "全局响应拦截器:response");
 				return response;
-			})
+			}),
 		);
 	}
 }

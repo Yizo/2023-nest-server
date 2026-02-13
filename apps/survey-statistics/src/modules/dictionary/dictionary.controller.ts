@@ -20,8 +20,8 @@ export class DictionaryController {
 	 * 3. 排序: 更新时间
 	 */
 	@Get("/types/list")
-	async findAllTypes(@Query(new PagePipe()) query: GetDictTypeDto) {
-		const { data, total } = await this.dictionaryService.findAllTypes(query);
+	async getTypeList(@Query(new PagePipe()) query: GetDictTypeDto) {
+		const { data, total } = await this.dictionaryService.getTypeList(query);
 		return {
 			data,
 			total,
@@ -29,6 +29,7 @@ export class DictionaryController {
 			pageSize: query.pageSize,
 		};
 	}
+
 	@Post("/types/create")
 	async createType(@Body() createTypeDto: CreateDictTypeDto) {
 		return await this.dictionaryService.createType(createTypeDto);
@@ -49,8 +50,8 @@ export class DictionaryController {
 	 * 3. 排序: 更新时间
 	 */
 	@Get("/data/list")
-	async findAllData(@Query(new PagePipe()) query: GetDictDataDto) {
-		return this.dictionaryService.findAllData(query);
+	async getDataList(@Query(new PagePipe()) query: GetDictDataDto) {
+		return this.dictionaryService.getDataList(query);
 	}
 	@Post("/data/create")
 	async createData(@Body() createDataDto: CreateDictDataDto) {
@@ -63,5 +64,13 @@ export class DictionaryController {
 	@Post("/data/delete")
 	async deleteData(@Body() deleteDataDto: DeleteDictDataDto) {
 		return this.dictionaryService.deleteData(deleteDataDto);
+	}
+
+	/**
+	 * 获取全部启用状态的字典类型和字典数据
+	 * **/
+	@Get("/all")
+	async getAllData() {
+		return this.dictionaryService.getAll();
 	}
 }
