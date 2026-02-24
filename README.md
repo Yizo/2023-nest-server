@@ -13,3 +13,5 @@ sudo lsof -i :3003
 ```shell
 sudo kill -9 [pid]
 ```
+
+nest g res menu src/modules --project=survey-statistics
