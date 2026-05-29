@@ -19,3 +19,10 @@ redis:
 
 jwt:
     secret: prod_secret
+
+cors:
+    origins:
+        - https://your-production-domain.com
+
+security:
+    bodyLimit: 100kb

@@ -1,0 +1,31 @@
+mode:
+  name: test
+  development: false
+
+db:
+  type: mysql
+  host: localhost
+  port: 3306
+  username: survey_user
+  password: survey_password
+  database: survey_db
+  timezone: +08:00
+  synchronize: true
+  logging: false
+  createForeignKeyConstraints: false
+
+redis:
+  host: localhost
+  port: 6379
+  password: null
+  expiration: 3600
+
+jwt:
+  secret: test_secret
+
+cors:
+  origins:
+    - http://localhost:3000
+
+security:
+  bodyLimit: 100kb

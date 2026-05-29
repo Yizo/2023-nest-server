@@ -18,10 +18,13 @@ export default () => {
 	try {
 		const defaultConfig = loadYaml(join(configDir, "config.yml"));
 		const envConfig = loadYaml(join(configDir, `config.${env}.yml`));
+		const mergedConfig = merge(defaultConfig, envConfig);
 
-		console.log("config", merge(defaultConfig, envConfig));
+		if (env === "development") {
+			console.log("config loaded for environment:", env);
+		}
 
-		return merge(defaultConfig, envConfig);
+		return mergedConfig;
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : typeof error === "string" ? error : "未知错误";

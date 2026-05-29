@@ -12,7 +12,6 @@ export class System {
 		comment: "配置标识, 枚举 SystemKey",
 		type: "varchar",
 		length: 64,
-		enum: SystemConfigType,
 	})
 	key!: SystemConfigType;
 

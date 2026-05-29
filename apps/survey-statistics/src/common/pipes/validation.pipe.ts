@@ -14,10 +14,13 @@ export class CustomValidationPipe extends ValidationPipe implements PipeTransfor
 		super({
 			// 自动剔除 DTO 中未定义的属性
 			whitelist: true,
-			// 遇到未声明字段不报错，只过滤掉
-			forbidNonWhitelisted: false,
+			// 拒绝 DTO 中未声明的字段
+			forbidNonWhitelisted: true,
 			// 自动类型转换（如字符串转数字、布尔等，推荐）
 			transform: true,
+			transformOptions: {
+				enableImplicitConversion: false,
+			},
 			exceptionFactory: (errors: any[]) => {
 				const firstError = errors.find(
 					(error) => Object.keys(error.constraints).length > 0,

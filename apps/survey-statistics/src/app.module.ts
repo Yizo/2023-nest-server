@@ -1,5 +1,7 @@
 import { Global, Module } from '@nestjs/common'
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, APP_GUARD } from '@nestjs/core'
+import { BullModule } from '@nestjs/bull'
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { QueryBuilderModule } from '@base/commons'
@@ -20,6 +22,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor'
 import { JwtAuthGuard } from './modules/auth/jwt/jwt.guard'
 import { CustomValidationPipe } from './common/pipes/validation.pipe'
 import { MenuModule } from './modules/menu/menu.module'
+import { ErrorReportModule } from './modules/error-report/error-report.module'
 
 @Global()
 @Module({
@@ -56,6 +59,25 @@ import { MenuModule } from './modules/menu/menu.module'
     }),
     QueryBuilderModule,
     RedisModule,
+    // Bull 全局 Redis 连接：所有队列共用，相当于消息队列的「快递中心」
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const password = config.get<string | null>('redis.password')
+        return {
+          redis: {
+            host: config.get('redis.host'),
+            port: config.get('redis.port'),
+            ...(password ? { password } : {}),
+          },
+        }
+      },
+    }),
+    ThrottlerModule.forRoot({
+      ttl: 60,
+      limit: 100,
+    }),
     /**************全局模块**************/
     UserModule,
     AuthModule,
@@ -64,6 +86,7 @@ import { MenuModule } from './modules/menu/menu.module'
     WebsocketModule,
     DictionaryModule,
     MenuModule,
+    ErrorReportModule,
   ],
   controllers: [AppController],
   providers: [
@@ -83,6 +106,10 @@ import { MenuModule } from './modules/menu/menu.module'
     {
       provide: APP_PIPE,
       useClass: CustomValidationPipe,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
     {
       provide: APP_GUARD,

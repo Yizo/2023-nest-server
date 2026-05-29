@@ -1,12 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { TOKEN_KEY } from "@/enums/jwt";
+import { JwtErrorCode, JwtErrorMessages, TOKEN_KEY } from "@/enums/jwt";
 import { RedisService } from "@/modules/redis/redis.service";
 import { UserService } from "@/modules/user/user.service";
-import { AuthErrorCodes, AuthErrorMessages } from "./constant";
-import { UnauthorizedException } from "@nestjs/common";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -35,14 +33,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		const cachedToken = await this.redisService.get(`token:${payload.sub}`);
 		if (!cachedToken) {
 			throw new UnauthorizedException({
-				message: AuthErrorMessages.TOKEN_EXPIRED,
-				code: AuthErrorCodes.TOKEN_EXPIRED,
+				message: JwtErrorMessages[JwtErrorCode.TOKEN_EXPIRED],
+				code: JwtErrorCode.TOKEN_EXPIRED,
 			});
 		}
 		if (cachedToken !== token) {
 			throw new UnauthorizedException({
-				message: AuthErrorMessages.TOKEN_INVALID,
-				code: AuthErrorCodes.TOKEN_EXPIRED,
+				message: JwtErrorMessages[JwtErrorCode.TOKEN_INVALID],
+				code: JwtErrorCode.TOKEN_INVALID,
 			});
 		}
 		const user = await this.userService.findUserByIdentifier("id", payload.sub);

@@ -13,7 +13,7 @@ import { RedisService } from "./redis.service";
 				const redis = config.get("redis");
 				const store = new KeyvRedis({
 					url: `redis://${redis.host}:${redis.port}`,
-					password: redis.password?.toString(),
+					...(redis.password ? { password: String(redis.password) } : {}),
 				});
 				store.on("error", (error: Error) => {
 					console.error("KeyvRedis Error", error);
