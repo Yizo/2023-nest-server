@@ -8,9 +8,12 @@ export async function truncateTables(
 		await dataSource.initialize();
 	}
 
-	await dataSource.query("SET FOREIGN_KEY_CHECKS = 0");
-	for (const tableName of tableNames) {
-		await dataSource.query(`TRUNCATE TABLE \`${tableName}\``);
+	if (tableNames.length === 0) {
+		return;
 	}
-	await dataSource.query("SET FOREIGN_KEY_CHECKS = 1");
+
+	const quoted = tableNames.map((name) => `"${name.replace(/"/g, '""')}"`);
+	await dataSource.query(
+		`TRUNCATE TABLE ${quoted.join(", ")} RESTART IDENTITY CASCADE`,
+	);
 }

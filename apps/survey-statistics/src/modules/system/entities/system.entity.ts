@@ -16,7 +16,7 @@ export class System {
 	key!: SystemConfigType;
 
 	@Column({
-		type: "json",
+		type: "jsonb",
 		comment: "配置值，支持对象/字符串/布尔/数字",
 	})
 	value!: any;

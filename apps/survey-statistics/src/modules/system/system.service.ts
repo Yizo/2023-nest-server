@@ -36,35 +36,21 @@ export class SystemService {
 	}
 
 	// 系统初始化
-	async create(createSystemDto: CreateSystemDto) {
-		// 1. 检查是否已初始化
+	async create(_createSystemDto: CreateSystemDto) {
 		const isInitialized = await this.isInitialized();
 		if (isInitialized) {
 			throw new BadRequestException("系统已初始化");
 		}
 
-		// 2. 初始化系统
-		return await this.systemRepository.manager.transaction(async (manager) => {
-			// 1. 创建系统角色
-			const createRolesResult = await this.roleService.createSystemRoles();
-			if (!createRolesResult) return true;
-			// 2. 创建超级管理员
-			const createAdminResult = await this.userService.createSuperAdmin();
-			if (!createAdminResult) return true;
-			// 3. 设置系统初始化状态
-			await manager
-				.createQueryBuilder()
-				.insert()
-				.into(System)
-				.values([
-					{
-						key: SystemConfigType.IS_INITIALIZED,
-						value: true as any,
-					},
-				])
-				.execute();
-			return true;
+		// 角色/管理员各自有幂等判断；已存在时继续后续步骤，避免半初始化卡死
+		await this.roleService.createSystemRoles();
+		await this.userService.createSuperAdmin();
+
+		await this.systemRepository.save({
+			key: SystemConfigType.IS_INITIALIZED,
+			value: true,
 		});
+		return true;
 	}
 
 	update(id: number, updateSystemDto: UpdateSystemDto) {

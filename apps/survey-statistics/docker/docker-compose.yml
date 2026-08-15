@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Survey Statistics 应用
   survey-statistics:
@@ -14,14 +12,11 @@ services:
       - NODE_ENV=production
       - PORT=3003
     volumes:
-      # 挂载日志目录（可选）
       - ./logs:/app/dist/apps/survey-statistics/src/logs
-      # 挂载配置文件（如果需要动态修改）
-      # - ./config:/app/dist/apps/survey-statistics/src/config
     networks:
       - survey-network
     depends_on:
-      - mysql
+      - postgres
       - redis
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
@@ -30,25 +25,26 @@ services:
       retries: 3
       start_period: 40s
 
-  # MySQL 数据库
-  mysql:
-    image: mysql:8.0
-    container_name: survey-mysql
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:16-alpine
+    container_name: survey-postgres
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "5432:5432"
     environment:
-      - MYSQL_ROOT_PASSWORD=root_password
-      - MYSQL_DATABASE=survey_db
-      - MYSQL_USER=survey_user
-      - MYSQL_PASSWORD=survey_password
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=survey_statistics
     volumes:
-      - mysql_data:/var/lib/mysql
-      # 如果有初始化脚本
-      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - survey-network
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d survey_statistics"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # Redis 缓存
   redis:
@@ -68,5 +64,5 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  postgres_data:
   redis_data:

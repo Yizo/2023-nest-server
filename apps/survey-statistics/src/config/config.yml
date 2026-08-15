@@ -1,34 +1,33 @@
 mode:
-  name: development
-  development: true
+    name: development
+    development: true
 
 db:
-  type: mysql
-  host: 39.96.165.134
-  port: 13306
-  username: root
-  password: 8Kytb8EzbAFrbtyC
-  database: survey_statistics
-  timezone: +08:00
-  synchronize: true
-  logging: true
-  logger: file
-  createForeignKeyConstraints: false
+    type: postgres
+    host: 127.0.0.1
+    port: 5432
+    username: postgres
+    password: postgres
+    database: survey_statistics
+    synchronize: true
+    logging: true
+    logger: file
+    createForeignKeyConstraints: false
 
 redis:
-  host: 39.96.165.134
-  port: 26739
-  password: YjdeMr3eSrejSTck
-  expiration: 3600
+    host: 127.0.0.1
+    port: 6379
+    password: null
+    expiration: 3600
 
 jwt:
-  secret: dev_secret
+    secret: dev_secret
 
 cors:
-  origins:
-    - http://localhost:3000
-    - http://localhost:5173
-    - http://localhost:3003
+    origins:
+        - http://localhost:3000
+        - http://localhost:5173
+        - http://localhost:3003
 
 security:
-  bodyLimit: 100kb
+    bodyLimit: 100kb

@@ -1,20 +1,19 @@
 db:
-    type: mysql
-    host: 39.96.165.134
-    port: 13306
-    username: root
-    password: 8Kytb8EzbAFrbtyC
+    type: postgres
+    host: 127.0.0.1
+    port: 5432
+    username: postgres
+    password: postgres
     database: survey_statistics
-    timezone: +08:00
     synchronize: false
     logging: false
     logger: file
     createForeignKeyConstraints: false
 
 redis:
-    host: 39.96.165.134
+    host: 127.0.0.1
     port: 6379
-    password: 123456
+    password: null
     expiration: 3600
 
 jwt:

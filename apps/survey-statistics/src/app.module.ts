@@ -46,7 +46,8 @@ import { ErrorReportModule } from './modules/error-report/error-report.module'
           username: db.username,
           password: db.password,
           database: db.database,
-          timezone: db.timezone,
+          // timezone 主要为 MySQL 语义；Postgres 使用 timestamptz / 应用层时区
+          ...(db.timezone ? { timezone: db.timezone } : {}),
           synchronize: db.synchronize,
           logging: db.logging,
           logger: db.logger,

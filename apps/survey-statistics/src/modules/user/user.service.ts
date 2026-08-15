@@ -119,8 +119,8 @@ export class UserService {
 					{ property: "ur.role", alias: "role", type: "leftJoinAndSelect" },
 				],
 				conditions: [
-					{ field: "role.code", operator: "in", value: [roleCode] },
-					{ field: "isActive", operator: "eq", value: true },
+					{ field: "role.code", operator: "in", value: roleCode },
+					{ field: "isActive", operator: "eq", value: 1 },
 				],
 			},
 			page,

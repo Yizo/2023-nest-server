@@ -23,7 +23,7 @@ export function getTestTypeOrmModule(entities?: EntityClass[]) {
 				username: db.username,
 				password: db.password,
 				database: db.database,
-				timezone: db.timezone,
+				...(db.timezone ? { timezone: db.timezone } : {}),
 				synchronize: db.synchronize,
 				logging: db.logging,
 				createForeignKeyConstraints: db.createForeignKeyConstraints,
