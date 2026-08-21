@@ -1,121 +1,67 @@
-import { Global, Module } from '@nestjs/common'
-import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE, APP_GUARD } from '@nestjs/core'
-import { BullModule } from '@nestjs/bull'
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
-import { ConfigModule, ConfigService } from '@nestjs/config'
-import { TypeOrmModule } from '@nestjs/typeorm'
-import { QueryBuilderModule } from '@base/commons'
-import { LoggerModule } from './common/logger/logger.module'
-import { AuthModule } from './modules/auth/auth.module'
-import { SurveyModule } from './modules/survey/survey.module'
-import { UserModule } from './modules/user/user.module'
-import { RedisModule } from './modules/redis/redis.module'
-import { SystemModule } from './modules/system/system.module'
-import { WebsocketModule } from './modules/websocket/websocket.module'
-import { DictionaryModule } from './modules/dictionary/dictionary.module'
-import configuration from './config/configuration'
-import { AppController } from './app.controller'
-import { AppService } from './app.service'
-import { HttpExceptionFilter } from './common/filters/http-exception.filter'
-import { ResponseTransformInterceptor } from './common/interceptors/response-transform.interceptor'
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor'
-import { JwtAuthGuard } from './modules/auth/jwt/jwt.guard'
-import { CustomValidationPipe } from './common/pipes/validation.pipe'
-import { MenuModule } from './modules/menu/menu.module'
-import { ErrorReportModule } from './modules/error-report/error-report.module'
+import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
+import { ConfigModule } from "@nestjs/config";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { MikroOrmModule } from "@mikro-orm/nestjs";
+import type { MikroOrmModuleSyncOptions } from "@mikro-orm/nestjs";
+import { createMikroOrmOptions } from "@/database/mikro-orm.options";
+import { env } from "@/config/environment";
+import { ApiExceptionFilter } from "@/common/filters/api-exception.filter";
+import { ApiResponseInterceptor } from "@/common/interceptors/api-response.interceptor";
+import { HttpLoggingInterceptor } from "@/common/interceptors/http-logging.interceptor";
+import { RequestIdMiddleware } from "@/common/middleware/request-id.middleware";
+import { RedisModule } from "@/infrastructure/redis/redis.module";
+import { QueueProducerModule } from "@/infrastructure/queue/queue-producer.module";
+import { QueueConsumerModule } from "@/infrastructure/queue/queue-consumer.module";
+import { AuthModule } from "@/modules/auth/auth.module";
+import { JwtAuthGuard, PermissionGuard } from "@/modules/auth/auth.guards";
+import { IdentityModule } from "@/modules/identity/identity.module";
+import { SystemModule } from "@/modules/system/system.module";
+import { SurveyModule } from "@/modules/survey/survey.module";
+import { MonitoringModule } from "@/modules/monitoring/monitoring.module";
+import { NotificationsModule } from "@/modules/notifications/notifications.module";
+import { RealtimeModule } from "@/modules/realtime/realtime.module";
+import { HealthModule } from "@/modules/health/health.module";
+import { AppLoggerModule } from "@/common/logger";
 
-@Global()
+// all 进程同时提供 API 和消费任务；api 进程只提供 HTTP；worker 进程使用 WorkerModule。
+const consumerImports = env.processRole === "all" ? [QueueConsumerModule] : [];
+
 @Module({
   imports: [
-    /**************全局模块**************/
-    LoggerModule.forRoot(),
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [configuration],
-    }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const db = config.get('db')
-        const entities = [__dirname + '/modules/**/*.entity{.ts,.js}']
-        return {
-          type: db.type,
-          host: db.host,
-          port: db.port,
-          username: db.username,
-          password: db.password,
-          database: db.database,
-          // timezone 主要为 MySQL 语义；Postgres 使用 timestamptz / 应用层时区
-          ...(db.timezone ? { timezone: db.timezone } : {}),
-          synchronize: db.synchronize,
-          logging: db.logging,
-          logger: db.logger,
-          createForeignKeyConstraints: db.createForeignKeyConstraints,
-          autoLoadEntities: true,
-          cache: true,
-          entities,
-        }
-      },
-    }),
-    QueryBuilderModule,
+    AppLoggerModule,
+    // ConfigModule 负责 Nest 的 ConfigService；环境变量本身在 environment.ts 中先加载。
+    ConfigModule.forRoot({ isGlobal: true }),
+    // MikroORM 只连接数据库和读取实体，不会在应用启动时自动改表。
+    MikroOrmModule.forRoot(createMikroOrmOptions() as unknown as MikroOrmModuleSyncOptions),
     RedisModule,
-    // Bull 全局 Redis 连接：所有队列共用，相当于消息队列的「快递中心」
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const password = config.get<string | null>('redis.password')
-        return {
-          redis: {
-            host: config.get('redis.host'),
-            port: config.get('redis.port'),
-            ...(password ? { password } : {}),
-          },
-        }
-      },
-    }),
+    QueueProducerModule,
     ThrottlerModule.forRoot({
-      ttl: 60,
-      limit: 100,
+      throttlers: [{ ttl: 60_000, limit: 100 }],
+      errorMessage: "请求过于频繁，请稍后再试",
     }),
-    /**************全局模块**************/
-    UserModule,
+    IdentityModule,
     AuthModule,
-    SurveyModule,
     SystemModule,
-    WebsocketModule,
-    DictionaryModule,
-    MenuModule,
-    ErrorReportModule,
+    SurveyModule,
+    MonitoringModule,
+    NotificationsModule,
+    RealtimeModule,
+    HealthModule,
+    ...consumerImports,
   ],
-  controllers: [AppController],
   providers: [
-    AppService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: LoggingInterceptor,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: ResponseTransformInterceptor,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: HttpExceptionFilter,
-    },
-    {
-      provide: APP_PIPE,
-      useClass: CustomValidationPipe,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
+    // Guard 顺序：先验证 JWT，再检查业务权限；Throttler 限制请求速率。
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
+    { provide: APP_INTERCEPTOR, useClass: HttpLoggingInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: ApiResponseInterceptor },
+    { provide: APP_FILTER, useClass: ApiExceptionFilter },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestIdMiddleware).forRoutes("{*path}");
+  }
+}

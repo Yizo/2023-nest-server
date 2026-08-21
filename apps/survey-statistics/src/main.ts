@@ -1,146 +1,88 @@
+import "reflect-metadata";
+import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import type { INestApplication } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { ConfigService } from "@nestjs/config";
-import { useReportBodyParsers } from "./modules/error-report/report-body.middleware";
-import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
-import { networkInterfaces } from "os";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
-import { appConfig } from "./enums/app";
-import { TOKEN_KEY } from "./enums/jwt";
+import { WorkerModule } from "./worker.module";
+import { assertProductionSecrets, env } from "./config/environment";
+import { createValidationPipe } from "./common/pipes/validation.pipe";
+import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 
-/** 收集本机所有非内网回环的 IPv4 地址，用于启动日志展示局域网访问地址 */
-function getLanIpv4Addresses(): string[] {
-	const addresses = new Set<string>();
-	for (const iface of Object.values(networkInterfaces())) {
-		if (!iface) continue;
-		for (const detail of iface) {
-			const family = String(detail.family);
-			const isIPv4 = family === "IPv4" || family === "4";
-			if (isIPv4 && !detail.internal) {
-				addresses.add(detail.address);
-			}
-		}
-	}
-	return [...addresses];
-}
-
-/** 根据环境构造 CORS 选项：开发回显 Origin，生产按白名单 */
-function buildCorsOptions(isDevelopment: boolean, corsOrigins: string[]): CorsOptions {
-	const base = {
-		credentials: true,
-		methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-		allowedHeaders: ["Content-Type", "Authorization", TOKEN_KEY],
-	};
-
-	if (isDevelopment) {
-		return {
-			...base,
-			// 开发环境回显请求 Origin，兼容 localhost / 局域网 IP（不可与 credentials 共用 *）
-			origin: (origin, callback) => callback(null, origin ?? true),
-		};
-	}
-
-	return {
-		...base,
-		origin: corsOrigins.length > 0 ? corsOrigins : false,
-	};
-}
-
-/** 安全与请求体相关中间件：helmet 头、信任代理、请求体大小限制、CORS */
-function configureSecurity(
-	app: INestApplication,
-	config: ConfigService,
-	isDevelopment: boolean,
-) {
-	// 取真实客户端 IP（部署在 Nginx 等反向代理后）
-	app.getHttpAdapter().getInstance().set("trust proxy", 1);
-
-	app.use(
-		helmet({
-			// 开发期关闭 CSP，避免本地调试被策略拦截
-			contentSecurityPolicy: isDevelopment ? false : undefined,
-			// 前端 5173 访问 API 3003 时，默认 same-origin 会导致浏览器报 NotSameOrigin
-			crossOriginResourcePolicy: isDevelopment ? false : undefined,
-		}),
-	);
-
-	const bodyLimit = config.get<string>("security.bodyLimit") ?? "100kb";
-	useReportBodyParsers(app, bodyLimit);
-
-	const corsOrigins = config.get<string[]>("cors.origins") ?? [];
-	app.enableCors(buildCorsOptions(isDevelopment, corsOrigins));
-}
-
-/** 仅开发环境挂载 Swagger 文档（路径 /api/docs） */
-function setupSwagger(app: INestApplication) {
-	const docConfig = new DocumentBuilder()
-		.setTitle("Survey Statistics API")
-		.setDescription("问卷统计平台后台接口")
-		.setVersion("1.0")
-		// 相对路径：Swagger 用 IP 打开时 Try it out 仍走当前主机，避免 localhost 跨域
-		.addServer("/", "当前访问主机")
-		.addBearerAuth(
-			{ type: "http", scheme: "bearer", bearerFormat: "JWT" },
-			"bearer",
-		)
-		.build();
-
-	const document = SwaggerModule.createDocument(app, docConfig);
-	// 全局前缀 api + path docs => 仅一层：/api/docs（勿写成 api/docs，否则变 /api/api/docs）
-	SwaggerModule.setup("docs", app, document, {
-		useGlobalPrefix: true,
-		swaggerOptions: { persistAuthorization: true },
-	});
-}
-
-/** 打印启动后的本地 / 局域网访问地址 */
-function printStartupBanner(port: number, isDevelopment: boolean) {
-	const lanIps = getLanIpv4Addresses();
-
-	console.log(`%c 🚀 Server ready`, "color: red");
-	console.log(`   Local:   http://localhost:${port}/api`);
-	for (const ip of lanIps) {
-		console.log(`   Network: http://${ip}:${port}/api`);
-	}
-
-	if (isDevelopment) {
-		console.log(`   Swagger: http://localhost:${port}/api/docs`);
-		for (const ip of lanIps) {
-			console.log(`   Swagger: http://${ip}:${port}/api/docs`);
-		}
-	}
-}
-
-async function bootstrap() {
-	const app = await NestFactory.create(AppModule, {
-		logger: ["error", "warn", "log"],
-	});
-	const config = app.get(ConfigService);
-	const isDevelopment = config.get<boolean>("mode.development");
-
-	// 所有路由统一挂在 /api 前缀下
+/**
+ * API 进程的入口。
+ *
+ * 这里只负责“组装 Nest 应用”和“注册全局能力”，不负责迁移数据库、
+ * 创建角色或写入默认业务数据。初始化属于部署阶段的显式命令。
+ */
+async function startApi(): Promise<void> {
+	const app = await NestFactory.create(AppModule, { bufferLogs: true });
+	// 把 Nest 系统日志和业务 Logger 统一切换到 Winston。
+	app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+	app.flushLogs();
+	app.enableShutdownHooks();
+	// 所有 HTTP 接口统一挂在版本前缀下，未来可以并行保留 v2。
 	app.setGlobalPrefix("api");
+	app.use(helmet());
+	app.enableCors({
+		origin: env.corsOrigins.includes("*") ? true : env.corsOrigins,
+		credentials: true,
+		methods: ["GET", "POST", "OPTIONS"],
+	});
+	// 全局校验只返回第一条中文提示，并阻止 DTO 未声明字段进入业务层。
+	app.useGlobalPipes(createValidationPipe());
 
-	configureSecurity(app, config, isDevelopment);
-
-	if (isDevelopment) {
-		setupSwagger(app);
+	if (env.swaggerEnabled) {
+		const config = new DocumentBuilder()
+			.setTitle("问卷统计系统 API")
+			.setDescription(
+				"问卷统计系统 HTTP 接口。成功响应统一为 `{ code: 0, message: \"成功\", data, requestId, timestamp }`；分页列表的 `data` 为 `{ items, page, pageSize, total }`。需要登录的接口请先调用 `/api/auth/login`，再使用返回的 access token。",
+			)
+			.setVersion("1.0")
+			.addTag("认证", "登录、刷新令牌、登出")
+			.addTag("身份与权限", "用户、角色、权限")
+			.addTag("问卷", "问卷创建、发布、答卷与统计")
+			.addTag("监控", "监控应用与客户端错误")
+			.addTag("监控 SDK", "前端 SDK 错误上报")
+			.addTag("系统", "字典、菜单、系统配置")
+			.addTag("通知", "站内通知")
+			.addTag("健康检查", "存活与就绪探测")
+			.addBearerAuth({ type: "http", scheme: "bearer", bearerFormat: "JWT", description: "登录后获得的 Access Token" }, "bearer")
+			.build();
+		SwaggerModule.setup("api/docs", app, SwaggerModule.createDocument(app, config), {
+			jsonDocumentUrl: "api/docs-json",
+			yamlDocumentUrl: "api/docs-yaml",
+			swaggerOptions: { persistAuthorization: true, docExpansion: "list" },
+		});
 	}
 
-	// 监听 0.0.0.0 以便局域网其他设备访问
-	const port = process.env.PORT ? parseInt(process.env.PORT, 10) : appConfig.port.http;
-	const host = process.env.HOST ?? "0.0.0.0";
-	await app.listen(port, host);
-
-	const address = app.getHttpServer().address();
-	const actualPort =
-		typeof address === "object" && address ? address.port : port;
-	printStartupBanner(actualPort, isDevelopment);
+	await app.listen(env.port, env.host);
+	Logger.log(
+		`survey-statistics API listening on ${env.host}:${env.port}; role=${env.processRole}`,
+		"Bootstrap",
+	);
 }
 
-bootstrap().catch((error) => {
-	console.error("Failed to bootstrap survey-statistics", error);
-	process.exit(1);
+async function startWorker(): Promise<void> {
+	// Worker 不监听 HTTP 端口，只消费 BullMQ 队列。
+	const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
+	app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+	app.flushLogs();
+	app.enableShutdownHooks();
+	Logger.log(
+		`survey-statistics worker started; concurrency=${env.queueConcurrency}`,
+		"Bootstrap",
+	);
+}
+
+async function bootstrap(): Promise<void> {
+	// 生产环境先检查密钥，避免服务带着开发默认值上线。
+	assertProductionSecrets();
+	if (env.processRole === "worker") await startWorker();
+	else await startApi();
+}
+
+void bootstrap().catch((error) => {
+	Logger.error(error instanceof Error ? error.stack : String(error), undefined, "Bootstrap");
+	process.exitCode = 1;
 });

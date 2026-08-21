@@ -1,68 +1,251 @@
+# Compose 项目名，影响容器、网络和 volume 的默认命名。
+name: survey-statistics
+
+# 共享应用环境变量，避免 app/worker/工具容器出现不同连接配置。
+x-app-environment: &app-environment
+  # 容器运行在生产模式，必须使用注入的生产密钥。
+  NODE_ENV: production
+  # PostgreSQL 用户、密码和数据库名来自 .env，默认值只适用于本地演示。
+  DATABASE_URL: postgresql://${POSTGRES_USER:-survey}:${POSTGRES_PASSWORD:-survey}@postgres:5432/${POSTGRES_DB:-survey_statistics_greenfield}
+  # Redis 使用独立容器；Compose 网络内通过服务名 redis 访问。
+  REDIS_URL: redis://redis:6379/0
+  # 缺少密钥时 Compose 直接失败，不启动不安全的应用。
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+  # Refresh secret 必须和 API/Worker 使用同一份配置。
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+  # 允许前端来源列表，多个来源用逗号分隔。
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+  # 生产默认关闭 Swagger，调试时可通过环境变量打开。
+  SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+  # 控制台和文件日志的最低级别。
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # 是否启用本地滚动文件；控制台日志始终保留。
+  LOG_FILE_ENABLED: ${LOG_FILE_ENABLED:-true}
+  # 容器内日志目录，对应 application_logs volume。
+  LOG_DIR: /workspace/apps/survey-statistics/logs
+  # 单个日志文件滚动阈值。
+  LOG_MAX_SIZE: ${LOG_MAX_SIZE:-20m}
+  # 日志保留周期。
+  LOG_MAX_FILES: ${LOG_MAX_FILES:-14d}
+
 services:
-  # Survey Statistics 应用
-  survey-statistics:
+  # 合并模式：一个容器同时提供 HTTP API 和后台 Worker，适合小型系统起步。
+  app:
+    # 使用仓库根目录作为 Docker build context，确保 workspace lock 可用。
     build:
       context: ../../..
       dockerfile: apps/survey-statistics/docker/Dockerfile
-    container_name: survey-statistics-app
+    # APP_VERSION 让部署系统可以用不可变镜像标签。
+    image: survey-statistics:${APP_VERSION:-local}
+    # 应用异常退出时由 Docker 自动重启。
     restart: unless-stopped
-    ports:
-      - "3003:3003"
     environment:
-      - NODE_ENV=production
-      - PORT=3003
+      # 继承数据库、Redis、密钥等共享配置。
+      <<: *app-environment
+      # all/api/worker 决定当前容器是否消费队列。
+      PROCESS_ROLE: ${PROCESS_ROLE:-all}
+      # 容器内端口固定，宿主机端口由 ports 映射。
+      PORT: 3003
+    ports:
+      # APP_PORT 只影响宿主机端口，不改变容器内监听端口。
+      - "${APP_PORT:-3003}:3003"
     volumes:
-      - ./logs:/app/dist/apps/survey-statistics/src/logs
-    networks:
-      - survey-network
+      # 持久化 API/合并进程产生的滚动日志。
+      - application_logs:/workspace/apps/survey-statistics/logs
     depends_on:
-      - postgres
-      - redis
+      # 应用等待 PostgreSQL 健康后再启动。
+      postgres:
+        condition: service_healthy
+      # 应用等待 Redis 健康后再启动。
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      # readiness 同时检查数据库、Redis 和 migration 版本。
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/api/v1/health/ready"]
+      # 每 15 秒检查一次服务是否可接流量。
+      interval: 15s
+      # 单次健康检查最多等待 5 秒。
+      timeout: 5s
+      # 连续 5 次失败才标记容器 unhealthy。
+      retries: 5
+      # 给 Node/Nest 初始启动和连接依赖预留 20 秒。
+      start_period: 20s
 
-  # PostgreSQL 数据库
+  # split profile：API 和 Worker 分开扩展时启用。
+  worker:
+    # 默认不启动，避免小型部署重复消费同一队列。
+    profiles: ["split"]
+    # Worker 使用与 API 相同的镜像，保证代码版本一致。
+    image: survey-statistics:${APP_VERSION:-local}
+    # Worker 不需要暴露端口，但仍使用同一生产配置。
+    restart: unless-stopped
+    environment:
+      # 继承数据库、Redis 和密钥配置。
+      <<: *app-environment
+      # 明确只消费队列，不启动 HTTP API。
+      PROCESS_ROLE: worker
+      # 并发数需要根据数据库和 Redis 容量调整。
+      QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-2}
+    volumes:
+      # API 和 Worker 通过不同文件名写入同一个日志 volume。
+      - application_logs:/workspace/apps/survey-statistics/logs
+    depends_on:
+      # Worker 也需要数据库连接处理任务。
+      postgres:
+        condition: service_healthy
+      # Worker 需要 Redis/BullMQ。
+      redis:
+        condition: service_healthy
+
+  # tools profile：只执行一次的数据库迁移容器。
+  migrate:
+    profiles: ["tools"]
+    image: survey-statistics:${APP_VERSION:-local}
+    restart: "no"
+    environment:
+      # 迁移必须连接目标生产数据库。
+      <<: *app-environment
+    # migrate 只执行版本化 migration，不启动业务 HTTP。
+    command: ["node", "apps/survey-statistics/dist/tools/cli.js", "migrate"]
+    depends_on:
+      # 迁移需要 PostgreSQL 已经接受连接。
+      postgres:
+        condition: service_healthy
+
+  # tools profile：首次部署或显式引导时创建平台所有者。
+  bootstrap-admin:
+    profiles: ["tools"]
+    image: survey-statistics:${APP_VERSION:-local}
+    restart: "no"
+    environment:
+      # 管理员命令需要数据库连接和 bootstrap 参数。
+      <<: *app-environment
+      # 邮箱为空时命令会主动失败，避免创建未知账号。
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      # 用户名默认是 superadmin，登录时不区分大小写。
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-superadmin}
+      # 没有提供显示名时使用通用名称。
+      BOOTSTRAP_ADMIN_DISPLAY_NAME: ${BOOTSTRAP_ADMIN_DISPLAY_NAME:-Platform Owner}
+      # 生产环境从 Docker secret 文件读取密码，不把密码放进环境变量。
+      BOOTSTRAP_ADMIN_PASSWORD_FILE: /run/secrets/bootstrap_admin_password
+    secrets:
+      # 将宿主机 secret 文件挂载到容器内只读路径。
+      - bootstrap_admin_password
+    # 命令具有幂等保护，不会重复创建第二个平台所有者。
+    command: ["node", "apps/survey-statistics/dist/tools/cli.js", "bootstrap-admin"]
+    depends_on:
+      # 管理员写入前必须确保数据库可连接。
+      postgres:
+        condition: service_healthy
+
+  # tools profile：同步每日清理、每分钟补偿和完整性巡检调度器。
+  queue-schedule-sync:
+    profiles: ["tools"]
+    image: survey-statistics:${APP_VERSION:-local}
+    restart: "no"
+    environment:
+      # 调度器只需要 Redis/BullMQ 连接配置。
+      <<: *app-environment
+    # 调度同步命令可以重复执行，不会创建重复调度。
+    command: ["node", "apps/survey-statistics/dist/tools/cli.js", "queue-schedule-sync"]
+    depends_on:
+      # 调度器需要 Redis 已健康。
+      redis:
+        condition: service_healthy
+
+  # tools profile：手动生成 custom-format PostgreSQL 备份。
+  backup:
+    profiles: ["tools"]
+    image: survey-statistics:${APP_VERSION:-local}
+    # named volume 默认可能由 root 创建，备份工具临时使用 root 写入 volume。
+    user: "0:0"
+    restart: "no"
+    environment:
+      # 备份目标和保存目录由环境变量明确指定。
+      <<: *app-environment
+      BACKUP_DIR: /backups
+    volumes:
+      # dump、manifest 和 checksum 统一保存在 backups volume。
+      - backups:/backups
+    # 脚本会生成 dump、manifest 和 SHA-256 文件。
+    command: ["sh", "apps/survey-statistics/scripts/db-backup.sh"]
+    depends_on:
+      # 备份前必须确认 PostgreSQL 可连接。
+      postgres:
+        condition: service_healthy
+
+  # tools profile：只能恢复到全新空数据库，拒绝覆盖现有库。
+  restore:
+    profiles: ["tools"]
+    image: survey-statistics:${APP_VERSION:-local}
+    # 恢复需要读取 backups volume，使用 root 避免 volume 权限问题。
+    user: "0:0"
+    restart: "no"
+    volumes:
+      # dump 路径和 checksum 路径必须位于同一 volume。
+      - backups:/backups
+    # 运行时通过 docker compose run 传入 dump 和目标数据库 URL。
+    entrypoint: ["sh", "apps/survey-statistics/scripts/db-restore.sh"]
+
+  # PostgreSQL 保存业务记录和 migration 执行记录。
   postgres:
     image: postgres:16-alpine
-    container_name: survey-postgres
     restart: unless-stopped
-    ports:
-      - "5432:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=survey_statistics
+      # 初始化数据库用户。
+      POSTGRES_USER: ${POSTGRES_USER:-survey}
+      # 初始化数据库密码，生产环境应通过 secret 管理。
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-survey}
+      # 新环境使用全新数据库名，避免误连旧系统库。
+      POSTGRES_DB: ${POSTGRES_DB:-survey_statistics_greenfield}
+    ports:
+      # 本地开发可连接宿主机端口，生产通常不暴露该端口。
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
+      # PostgreSQL 数据目录持久化，容器重建不会丢库。
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - survey-network
+      # PostgreSQL 容器也能访问备份 volume，便于人工取出备份。
+      - backups:/backups
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d survey_statistics"]
+      # pg_isready 只检查数据库是否接受连接，不代表 migration 已完成。
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-survey} -d ${POSTGRES_DB:-survey_statistics_greenfield}"]
+      # 数据库启动期间每 5 秒检查一次。
       interval: 5s
+      # 单次检查最多等待 5 秒。
       timeout: 5s
+      # 连续 10 次失败后标记 unhealthy。
       retries: 10
 
-  # Redis 缓存
+  # Redis 用于 BullMQ、refresh token 和实时 Pub/Sub，不保存 PostgreSQL 核心业务记录。
   redis:
     image: redis:7-alpine
-    container_name: survey-redis
     restart: unless-stopped
+    # AOF + noeviction 保证队列任务不会因为内存淘汰静默丢失。
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
     ports:
-      - "6379:6379"
+      # 本地开发连接宿主机 Redis 端口。
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
+      # Redis AOF 文件持久化到 volume。
       - redis_data:/data
-    networks:
-      - survey-network
-    command: redis-server --appendonly yes
+    healthcheck:
+      # redis-cli ping 是最小可用性检查。
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-networks:
-  survey-network:
-    driver: bridge
+secrets:
+  # Compose 从宿主机文件读取管理员密码，不把内容写入 compose 文件。
+  bootstrap_admin_password:
+    file: ${BOOTSTRAP_ADMIN_PASSWORD_FILE:-./secrets/bootstrap-admin-password.txt}
 
 volumes:
+  # PostgreSQL 业务数据 volume。
   postgres_data:
+  # Redis AOF 数据 volume。
   redis_data:
+  # dump、manifest 和 checksum 的共享 volume。
+  backups:
+  # API 和 Worker 的本地滚动日志 volume。
+  application_logs:

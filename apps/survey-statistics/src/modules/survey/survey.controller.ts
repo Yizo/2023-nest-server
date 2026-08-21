@@ -1,91 +1,78 @@
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Param,
-	Patch,
-	Post,
-	Query,
-	UseGuards,
-} from "@nestjs/common";
-import {
-	ApiBearerAuth,
-	ApiBody,
-	ApiCreatedResponse,
-	ApiOperation,
-	ApiOkResponse,
-	ApiParam,
-	ApiQuery,
-	ApiTags,
-} from "@nestjs/swagger";
-import { JwtAuthGuard } from "../auth/jwt/jwt.guard";
-import { ReqUser } from "@/common/decorators/req-user.decorator";
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
+import { CurrentUser, RequirePermissions } from "@/common/decorators";
+import type { AuthenticatedUser } from "@/common/types/auth.types";
+import { CreateSurveyDto, SubmitSurveyDto, SurveyListQueryDto, UpdateSurveyDto } from "./survey.dto";
+import { SurveyQueries } from "./survey.queries";
 import { SurveyService } from "./survey.service";
-import { CreateSurveyDto } from "./dto/create-survey.dto";
-import { UpdateSurveyDto } from "./dto/update-survey.dto";
-import { SubmitSurveyResponseDto } from "./dto/submit-response.dto";
 
+/** 问卷 Controller 只做路由、DTO 和权限声明，不直接拼接 SQL。 */
+@ApiTags("问卷")
+@ApiBearerAuth("bearer")
 @Controller("surveys")
-@ApiTags("surveys")
-@ApiBearerAuth()
 export class SurveyController {
-	constructor(private readonly surveyService: SurveyService) {}
+  constructor(private readonly service: SurveyService, private readonly queries: SurveyQueries) {}
 
-	@Post()
-	@ApiOperation({ summary: "创建问卷" })
-	@ApiBody({ type: CreateSurveyDto })
-	@ApiCreatedResponse({ description: "问卷创建成功" })
-	create(@ReqUser() user: any, @Body() dto: CreateSurveyDto) {
-		return this.surveyService.create(user.userId, dto);
-	}
+  @Get()
+  @RequirePermissions("survey.read")
+  @ApiOperation({ summary: "问卷列表" })
+  list(@CurrentUser() user: AuthenticatedUser, @Query() query: SurveyListQueryDto) {
+    return this.queries.list(user, query);
+  }
 
-	@UseGuards(JwtAuthGuard)
-	@Patch(":id")
-	@ApiOperation({ summary: "更新问卷" })
-	@ApiParam({ name: "id", description: "问卷 ID" })
-	@ApiBody({ type: UpdateSurveyDto })
-	update(@ReqUser() user: any, @Param("id") id: string, @Body() dto: UpdateSurveyDto) {
-		return this.surveyService.update(id, user.userId, dto);
-	}
+  @Get(":id")
+  @RequirePermissions("survey.read")
+  @ApiParam({ name: "id", description: "问卷 ID（UUIDv7）" })
+  @ApiOperation({ summary: "问卷详情" })
+  detail(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    return this.service.detail(user, id);
+  }
 
-	@UseGuards(JwtAuthGuard)
-	@Delete(":id")
-	@ApiOperation({ summary: "删除问卷" })
-	@ApiParam({ name: "id", description: "问卷 ID" })
-	remove(@ReqUser() user: any, @Param("id") id: string) {
-		return this.surveyService.remove(id, user.userId);
-	}
+  @Post()
+  @RequirePermissions("survey.create")
+  @ApiOperation({ summary: "创建问卷" })
+  create(@CurrentUser() user: AuthenticatedUser, @Body() body: CreateSurveyDto) {
+    return this.service.create(user, body);
+  }
 
-	@Get()
-	@ApiOperation({ summary: "分页查询问卷" })
-	@ApiQuery({ name: "limit", required: false, description: "每页数量，默认 20" })
-	@ApiQuery({ name: "offset", required: false, description: "偏移量，默认 0" })
-	list(@Query("limit") limit = 20, @Query("offset") offset = 0, @ReqUser() user: any) {
-		console.log("user", user);
-		return this.surveyService.findAll(Number(limit), Number(offset));
-	}
+  @Post(":id/update")
+  @RequirePermissions("survey.update")
+  @ApiParam({ name: "id", description: "问卷 ID（UUIDv7）" })
+  @ApiOperation({ summary: "更新问卷" })
+  update(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: UpdateSurveyDto) {
+    return this.service.update(user, id, body);
+  }
 
-	@Get(":id")
-	@ApiOperation({ summary: "查询问卷详情" })
-	@ApiParam({ name: "id", description: "问卷 ID" })
-	detail(@Param("id") id: string) {
-		return this.surveyService.findById(id);
-	}
+  @Post(":id/publish")
+  @RequirePermissions("survey.publish")
+  @ApiParam({ name: "id", description: "问卷 ID（UUIDv7）" })
+  @ApiOperation({ summary: "发布问卷", description: "发布后才允许提交答卷。" })
+  publish(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    return this.service.publish(user, id);
+  }
 
-	@UseGuards(JwtAuthGuard)
-	@Post(":id/responses")
-	@ApiOperation({ summary: "提交问卷" })
-	@ApiParam({ name: "id", description: "问卷 ID" })
-	@ApiBody({ type: SubmitSurveyResponseDto })
-	respond(@ReqUser() user: any, @Param("id") id: string, @Body() dto: SubmitSurveyResponseDto) {
-		return this.surveyService.submitResponse(user.userId, id, dto);
-	}
+  @Post(":id/close")
+  @RequirePermissions("survey.close")
+  @ApiParam({ name: "id", description: "问卷 ID（UUIDv7）" })
+  @ApiOperation({ summary: "关闭问卷", description: "关闭后不再接受新答卷。" })
+  close(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    return this.service.close(user, id);
+  }
 
-	@Get(":id/results")
-	@ApiOperation({ summary: "查询问卷统计结果" })
-	@ApiParam({ name: "id", description: "问卷 ID" })
-	stats(@Param("id") id: string) {
-		return this.surveyService.getStatistics(id);
-	}
+  @Post(":id/responses")
+  @RequirePermissions("survey.respond")
+  @ApiParam({ name: "id", description: "问卷 ID（UUIDv7）" })
+  @ApiOperation({ summary: "提交答卷" })
+  submit(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: SubmitSurveyDto) {
+    return this.service.submit(user, id, body);
+  }
+
+  @Get(":id/statistics")
+  @RequirePermissions("survey.statistics")
+  @ApiParam({ name: "id", description: "问卷 ID（UUIDv7）" })
+  @ApiOperation({ summary: "问卷统计" })
+  async statistics(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    await this.service.assertStatisticsAccess(user, id);
+    return this.queries.statistics(id);
+  }
 }

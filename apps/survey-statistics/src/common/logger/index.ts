@@ -1,4 +1,2 @@
-import { LoggerMiddleware } from './logger.middleware';
-import { LoggerModule } from './logger.module';
-
-export { LoggerMiddleware, LoggerModule };
+export { AppLoggerModule } from "./logger.module";
+export { sanitizeLogField, sanitizeLogValue } from "./log-sanitizer";

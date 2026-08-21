@@ -41,3 +41,9 @@ apps/**/*.map
 packages/**/*.js
 packages/**/*.map
 logs/*
+
+# Local environment files may contain credentials
+.env
+**/.env
+**/.env.*
+!**/.env.example

@@ -1,9 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "incremental": false,
-    "sourceMap": false,
-    "declaration": false
-  },
-  "exclude": ["node_modules", "test", "dist"]
+  "compilerOptions": { "incremental": false, "sourceMap": false, "rootDir": "./src" },
+  "exclude": ["node_modules", "dist", "test", "mikro-orm.config.ts", "**/*.spec.ts"]
 }

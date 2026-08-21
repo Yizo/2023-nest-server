@@ -1,41 +1,33 @@
-import { Body, Controller, Get, Post, Req } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { Throttle } from "@nestjs/throttler";
-import { Request } from "express";
+import { Body, Controller, Post } from "@nestjs/common";
+import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Public } from "@/common/decorators";
 import { AuthService } from "./auth.service";
-import { RegisterAuthDto } from "./dto/register-auth.dto";
-import { LoginAuthDto } from "./dto/login-auth.dto";
-import { Public } from "@/common/decorators/public.decorator";
+import { LoginDto, RefreshDto } from "./auth.dto";
 
+/** 认证接口只负责接收凭据和返回 token，用户创建由 Identity 管理接口完成。 */
+@ApiTags("认证")
 @Controller("auth")
-@ApiTags("auth")
-@ApiBearerAuth()
 export class AuthController {
-	constructor(private readonly authService: AuthService) {}
+  constructor(private readonly auth: AuthService) {}
 
-	@Post("register")
-	@Public()
-	@Throttle(5, 60)
-	@ApiOperation({ summary: "注册管理员" })
-	@ApiResponse({ status: 201, description: "管理员账号创建成功" })
-	register(@Body() dto: RegisterAuthDto) {
-		return this.authService.register(dto);
-	}
+  @Public()
+  @Post("login")
+  @ApiOperation({ summary: "登录", description: "使用用户名或邮箱登录，返回 access token 和 refresh token。" })
+  login(@Body() body: LoginDto) {
+    return this.auth.login(body.username, body.password);
+  }
 
-	@Post("login")
-	@Public()
-	@Throttle(5, 60)
-	@ApiOperation({ summary: "管理员登录" })
-	@ApiResponse({ status: 200, description: "返回访问令牌" })
-	login(@Body() dto: LoginAuthDto) {
-		return this.authService.login(dto);
-	}
+  @Public()
+  @Post("refresh")
+  @ApiOperation({ summary: "刷新令牌", description: "用 refresh token 换取新的 access token；旧 refresh token 会失效。" })
+  refresh(@Body() body: RefreshDto) {
+    return this.auth.refresh(body.refreshToken);
+  }
 
-	@Get("logout")
-	@Public()
-	@ApiOperation({ summary: "管理员退出（无需有效 token，过期也可退出）" })
-	@ApiResponse({ status: 200, description: "退出成功" })
-	logout(@Req() req: Request) {
-		return this.authService.logoutFromRequest(req);
-	}
+  @Public()
+  @Post("logout")
+  @ApiOperation({ summary: "登出", description: "作废当前 refresh token。" })
+  logout(@Body() body: RefreshDto) {
+    return this.auth.logout(body.refreshToken);
+  }
 }

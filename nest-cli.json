@@ -1,43 +1,24 @@
 {
 	"$schema": "https://json.schemastore.org/nest-cli",
 	"collection": "@nestjs/schematics",
-	"sourceRoot": "apps/survey-statistics/src",
 	"monorepo": true,
 	"root": "apps/survey-statistics",
+	"sourceRoot": "apps/survey-statistics/src",
 	"compilerOptions": {
-		"webpack": false,
-		"tsConfigPath": "apps/survey-statistics/tsconfig.app.json",
-		"deleteOutDir": false,
-		"watchAssets": true
+		"deleteOutDir": true
 	},
 	"generateOptions": {
 		"spec": false,
 		"flat": false
 	},
 	"projects": {
-		"nest-admin": {
-			"type": "application",
-			"root": "apps/nest-admin",
-			"entryFile": "main",
-			"sourceRoot": "apps/nest-admin/src",
-			"compilerOptions": {
-				"tsConfigPath": "apps/nest-admin/tsconfig.app.json"
-			}
-		},
 		"survey-statistics": {
 			"type": "application",
 			"root": "apps/survey-statistics",
 			"entryFile": "main",
 			"sourceRoot": "apps/survey-statistics/src",
 			"compilerOptions": {
-				"tsConfigPath": "apps/survey-statistics/tsconfig.app.json",
-				"assets": [
-					{
-						"include": "config/*.yml",
-						"outDir": "dist/apps/survey-statistics/src",
-						"watchAssets": false
-					}
-				]
+				"tsConfigPath": "apps/survey-statistics/tsconfig.build.json"
 			}
 		},
 		"commons": {

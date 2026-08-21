@@ -6,27 +6,29 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "nest build survey-statistics && nest build commons && nest build utils",
     "format": "prettier --write \"apps/**/*.ts\" \"packages/**/*.ts\"",
-    "start": "nest start",
-    "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/apps/nest-admin/main",
+    "start": "nest start survey-statistics",
+    "start:dev": "cross-env NODE_OPTIONS=--require=./apps/survey-statistics/scripts/register-runtime-alias.cjs nest start survey-statistics --watch",
+    "start:debug": "cross-env NODE_OPTIONS=--require=./apps/survey-statistics/scripts/register-runtime-alias.cjs nest start survey-statistics --debug --watch",
+    "start:prod": "pnpm --dir apps/survey-statistics start",
     "lint": "eslint \"{apps,packages}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "admin:dev": "nest start nest-admin --watch",
-    "admin:build": "nest build nest-admin",
-    "admin:start": "node dist/apps/nest-admin/src/main",
-    "admin:debug": "nest start nest-admin --debug --watch",
-    "survey:dev": "NODE_ENV=development node scripts/kill-port.js 3003 && nest start survey-statistics --watch",
-    "survey:dev:safe": "NODE_ENV=development PORT=3003 nest start survey-statistics --watch --preserveWatchOutput",
-    "survey:build": "nest build survey-statistics",
-    "survey:start": "node dist/apps/survey-statistics/src/main",
-    "survey:debug": "nest start survey-statistics --debug --watch"
+    "test": "pnpm --dir apps/survey-statistics test",
+    "test:watch": "pnpm --dir apps/survey-statistics test:watch",
+    "test:cov": "pnpm --dir apps/survey-statistics test:cov",
+    "test:e2e": "pnpm --dir apps/survey-statistics test:e2e",
+    "survey:dev": "pnpm --dir apps/survey-statistics start:dev",
+    "survey:dev:safe": "pnpm --dir apps/survey-statistics start:dev",
+    "survey:build": "pnpm --dir apps/survey-statistics build",
+    "survey:start": "pnpm --dir apps/survey-statistics start",
+    "survey:debug": "pnpm --dir apps/survey-statistics start:debug",
+    "survey:db:status": "pnpm --dir apps/survey-statistics db:status",
+    "survey:db:migrate": "pnpm --dir apps/survey-statistics db:migrate",
+    "survey:init": "pnpm --dir apps/survey-statistics db:init",
+    "survey:bootstrap-admin": "pnpm --dir apps/survey-statistics db:bootstrap-admin",
+    "survey:queue:sync": "pnpm --dir apps/survey-statistics queue:schedule:sync",
+    "commons:build": "nest build commons",
+    "utils:build": "nest build utils"
   },
   "dependencies": {
     "@casl/ability": "^6.7.3",
@@ -79,8 +81,8 @@
     "x-crawl": "^10.0.2"
   },
   "devDependencies": {
-    "@nestjs/cli": "^9.0.0",
-    "@nestjs/schematics": "^9.0.0",
+    "@nestjs/cli": "11.0.14",
+    "@nestjs/schematics": "11.0.7",
     "@nestjs/testing": "^9.0.0",
     "@types/bcrypt": "^6.0.0",
     "@types/bull": "^4.10.0",
@@ -112,7 +114,7 @@
     "ts-loader": "^9.2.3",
     "ts-node": "^10.0.0",
     "tsconfig-paths": "4.1.1",
-    "typescript": "^4.7.4"
+    "typescript": "5.9.2"
   },
   "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
 }
