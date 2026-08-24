@@ -1,5 +1,6 @@
 import { BadRequestException, ExecutionContext, NotFoundException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
+import { jest } from "@jest/globals";
 import { lastValueFrom, of } from "rxjs";
 import { AuthRequired, Public } from "../../src/common/decorators";
 import { HttpExceptionFilter } from "../../src/common/filters";

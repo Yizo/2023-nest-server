@@ -8,15 +8,16 @@ import { AuthPlaceholderGuard } from "./common/guards";
 import { RequestLoggingInterceptor, ResponseInterceptor } from "./common/interceptors";
 import { RequestIdMiddleware } from "./common/middleware";
 import { AppLoggerModule } from "./common/logger";
-import { DatabaseModule, MikroOrmRequestContextMiddleware } from "./database";
-import { HealthModule } from "./health";
+import { DatabaseModule } from "./infrastructure/database";
+import { InfrastructureStartupService } from "./infrastructure/infrastructure-startup.service";
 import { RedisModule } from "./infrastructure/redis";
+import { DictModule } from "./modules/dict/dict.module";
+import { HealthModule } from "./modules/health";
 
 /**
  * admin-api 根模块。
  *
- * 这里仅组装基础设施和全局横切能力，不放任何具体业务模块；未来新增业务
- * 时应以独立 Module 进入 imports，而不是把业务服务继续堆到根模块。
+ * 这里只组装基础设施、全局横切能力和 modules 下的业务模块。
  */
 @Module({
 	imports: [
@@ -31,9 +32,11 @@ import { RedisModule } from "./infrastructure/redis";
 		DatabaseModule,
 		RedisModule,
 		HealthModule,
+		DictModule,
 	],
 	controllers: [AppController],
 	providers: [
+		InfrastructureStartupService,
 		{ provide: APP_FILTER, useClass: HttpExceptionFilter },
 		{ provide: APP_GUARD, useClass: AuthPlaceholderGuard },
 		{ provide: APP_INTERCEPTOR, useClass: RequestLoggingInterceptor },
@@ -42,10 +45,7 @@ import { RedisModule } from "./infrastructure/redis";
 })
 export class AppModule implements NestModule {
 	configure(consumer: MiddlewareConsumer): void {
-		// 所有 HTTP 路由都先经过 Request ID 中间件，保证成功和异常日志可关联。
-		// 随后的 ORM 请求上下文为每个请求创建独立 EntityManager，避免并发污染。
-		consumer
-			.apply(RequestIdMiddleware, MikroOrmRequestContextMiddleware)
-			.forRoutes("{*path}");
+		// ORM 请求上下文由 @mikro-orm/nestjs 注册，这里只负责请求标识。
+		consumer.apply(RequestIdMiddleware).forRoutes("{*path}");
 	}
 }

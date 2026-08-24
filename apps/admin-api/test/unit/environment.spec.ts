@@ -1,4 +1,8 @@
-import { createConfiguration, environmentFilesForMode } from "../../src/config";
+import {
+	ADMIN_API_VERSION,
+	createConfiguration,
+	environmentFilesForMode,
+} from "../../src/config";
 
 const environment = {
 	NODE_ENV: "test",
@@ -40,8 +44,13 @@ describe("environment configuration", () => {
 		const config = createConfiguration(environment);
 
 		expect(config).toMatchObject({
-			app: { name: "admin-api-test", nodeEnv: "test", port: 3004 },
-			database: { url: environment.DATABASE_URL },
+			app: {
+				name: "admin-api-test",
+				nodeEnv: "test",
+				port: 3004,
+				version: ADMIN_API_VERSION,
+			},
+			database: { url: environment.DATABASE_URL, synchronize: false, debug: false },
 			redis: { url: environment.REDIS_URL },
 			cors: {
 				origins: ["http://localhost:5173", "http://localhost:4173"],
@@ -67,5 +76,19 @@ describe("environment configuration", () => {
 
 		expect(config.database.url).toBe("");
 		expect(config.redis.url).toBe("");
+	});
+
+	it("enables synchronize by default only in development", () => {
+		expect(createConfiguration({ ...environment, NODE_ENV: "development" }).database.synchronize).toBe(true);
+		expect(createConfiguration({
+			...environment,
+			NODE_ENV: "development",
+			DATABASE_SYNCHRONIZE: "false",
+		}).database.synchronize).toBe(false);
+		expect(createConfiguration({
+			...environment,
+			NODE_ENV: "production",
+			DATABASE_SYNCHRONIZE: "true",
+		}).database.synchronize).toBe(false);
 	});
 });

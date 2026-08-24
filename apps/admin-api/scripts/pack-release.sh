@@ -41,4 +41,5 @@ rm -f "${OUTPUT_ARCHIVE}"
 
 echo "已生成 ${OUTPUT_ARCHIVE}"
 echo "上传解压后在项目根执行：pnpm install --prod"
-echo "1Panel 启动命令选 start（node dist/main.js），不要选 start:dev / start:prod"
+echo "执行 migration：pnpm db:migration:up:prod"
+echo "migration 完成后启动应用：pnpm start"

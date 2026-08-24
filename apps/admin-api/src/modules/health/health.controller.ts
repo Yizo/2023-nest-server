@@ -1,6 +1,6 @@
 import { Controller, Get } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Public } from "../common/decorators";
+import { Public } from "../../common/decorators";
 import { HealthService } from "./health.service";
 
 /** 提供给 1Panel、反向代理和人工排障使用的存活/就绪接口。 */

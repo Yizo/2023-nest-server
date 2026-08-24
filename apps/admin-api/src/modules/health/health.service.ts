@@ -1,6 +1,6 @@
-import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { MikroORM } from "@mikro-orm/postgresql";
-import { RedisService } from "../infrastructure/redis";
+import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
+import { RedisService } from "../../infrastructure/redis";
 
 export interface ReadinessResult {
 	status: "ok" | "degraded";

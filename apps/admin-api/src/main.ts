@@ -34,7 +34,7 @@ export function configureHttpApplication(
 		const documentConfig = new DocumentBuilder()
 			.setTitle(`${config.app.name} API`)
 			.setDescription("admin-api 基础脚手架接口文档")
-			.setVersion("1.0.0")
+			.setVersion(config.app.version)
 			.build();
 		const document = SwaggerModule.createDocument(app, documentConfig);
 		SwaggerModule.setup("api/v1/docs", app, document, {
@@ -53,27 +53,26 @@ export async function createApplication() {
 
 /** 正式启动 HTTP 服务。 */
 async function bootstrap(): Promise<void> {
-	const app = await createApplication();
-	const configService = app.get(ConfigService);
-	const config = configService.getOrThrow<AdminApiConfig>("app");
-	await app.listen(config.app.port, "0.0.0.0");
-	new Logger("Bootstrap").log(
-		`${config.app.name} listening on 0.0.0.0:${config.app.port}; environment=${config.app.nodeEnv}`,
-	);
-
-	console.group("启动成功");
-	console.log("应用配置", config);
-	console.log("接口文档地址：", `http://localhost:${config.app.port}/api/v1/docs`);
-	console.log("接口文档json地址：", `http://localhost:${config.app.port}/api/v1/docs-json`);
-	console.groupEnd();
+	let app: Awaited<ReturnType<typeof createApplication>> | undefined;
+	try {
+		app = await createApplication();
+		const configService = app.get(ConfigService);
+		const config = configService.getOrThrow<AdminApiConfig>("app");
+		await app.listen(config.app.port, "0.0.0.0");
+		new Logger("Bootstrap").log(
+			`${config.app.name}@${config.app.version} listening on 0.0.0.0:${config.app.port}; environment=${config.app.nodeEnv}`,
+		);
+	} catch (error) {
+		if (app) await app.close().catch(() => undefined);
+		throw error;
+	}
 }
 
 if (typeof require !== "undefined" && require.main === module) {
 	void bootstrap().catch((error: unknown) => {
 		// 启动阶段可能尚未完成 Nest 日志初始化，所以这里保留 stderr 兜底。
-		process.stderr.write(
-			`${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
-		);
+		const message = error instanceof Error ? error.message : "未知错误";
+		process.stderr.write(`应用启动失败：${message}\n`);
 		process.exitCode = 1;
 	});
 }

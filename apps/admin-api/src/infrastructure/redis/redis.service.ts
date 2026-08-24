@@ -1,49 +1,64 @@
-import { Inject, Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
-import Redis from "ioredis";
+import { Inject, Injectable, Logger, type OnModuleDestroy } from "@nestjs/common";
+import type { RedisClientType } from "redis";
 import { REDIS_CLIENT } from "./redis.constants";
 
-/** Redis 基础操作封装；第一版只提供连接生命周期和 PING 检查。 */
+/** Redis 官方 node-redis 客户端的连接、探测和关闭生命周期。 */
 @Injectable()
 export class RedisService implements OnModuleDestroy {
 	private readonly logger = new Logger(RedisService.name);
+	private connectPromise?: Promise<void>;
 	private lastErrorLoggedAt = 0;
-	private readonly errorLogIntervalMs = 60_000;
 
-	constructor(@Inject(REDIS_CLIENT) private readonly client: Redis) {
-		// ioredis 没有 error listener 时会把连接失败升级为未捕获事件；
-		// 健康检查会把它转换为 503，这里只记录原因并保持进程可启动。
+	constructor(@Inject(REDIS_CLIENT) private readonly client: RedisClientType) {
+		this.client.on("ready", () => {
+			this.lastErrorLoggedAt = 0;
+			this.logger.log("Redis 连接已就绪");
+		});
 		this.client.on("error", (error) => {
-			// ioredis 在远程服务不可用时会按重试策略重复发出 error；
-			// 日志限流避免 readiness 探测把本地文件刷满。
 			const now = Date.now();
-			if (now - this.lastErrorLoggedAt < this.errorLogIntervalMs) return;
+			if (now - this.lastErrorLoggedAt < 60_000) return;
 			this.lastErrorLoggedAt = now;
-			this.logger.warn(`Redis client error: ${error.message}`);
+			this.logger.warn(`Redis 连接错误：${error.message}`);
 		});
 	}
 
-	/** 启动懒连接并验证 Redis 是否能够响应。 */
+	async ensureConnected(): Promise<void> {
+		if (this.client.isReady) return;
+		if (!this.client.isOpen) {
+			this.connectPromise ??= this.client.connect()
+				.then(() => undefined)
+				.finally(() => {
+					this.connectPromise = undefined;
+				});
+		}
+		if (this.connectPromise) await this.connectPromise;
+		if (!this.client.isReady) throw new Error("Redis 尚未就绪");
+	}
+
 	async ping(): Promise<boolean> {
-		if (this.client.status === "wait") await this.client.connect();
+		if (!this.client.isOpen) await this.ensureConnected();
+		if (!this.client.isReady) return false;
 		return (await this.client.ping()) === "PONG";
 	}
 
-	/** 仅在未来需要缓存或队列时开放底层客户端，当前业务不直接依赖它。 */
-	getClient(): Redis {
+	async assertRuntimeReady(): Promise<void> {
+		await this.ensureConnected();
+		if (!(await this.ping())) throw new Error("Redis PING 未返回 PONG");
+	}
+
+	/** 普通命令可复用此客户端；阻塞命令、订阅和队列需要独立连接。 */
+	getClient(): RedisClientType {
 		return this.client;
 	}
 
 	async onModuleDestroy(): Promise<void> {
-		if (this.client.status === "end") return;
-		if (this.client.status !== "ready") {
-			this.client.disconnect();
-			return;
-		}
+		if (!this.client.isOpen) return;
 		try {
-			await this.client.quit();
+			if (this.client.isReady) await this.client.close();
+			else this.client.destroy();
 		} catch (error) {
-			this.logger.warn(`Redis connection close failed: ${String(error)}`);
-			this.client.disconnect();
+			this.logger.warn(`Redis 关闭失败：${String(error)}`);
+			this.client.destroy();
 		}
 	}
 }

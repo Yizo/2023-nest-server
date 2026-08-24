@@ -1,4 +1,7 @@
 {
+  "dependencies": {
+    "@nestjs/mapped-types": "*"
+  },
 	"name": "2023-nest-server",
 	"version": "1.0.0",
 	"description": "admin-api backend workspace",
@@ -15,6 +18,11 @@
 		"start:prod": "pnpm --dir apps/admin-api start:prod",
 		"pack:release": "pnpm --dir apps/admin-api pack:release",
 		"ssh:tunnel": "pnpm --dir apps/admin-api ssh:tunnel",
+		"db:migration:create": "pnpm --dir apps/admin-api db:migration:create",
+		"db:migration:check": "pnpm --dir apps/admin-api db:migration:check",
+		"db:migration:status": "pnpm --dir apps/admin-api db:migration:status",
+		"db:migration:up": "pnpm --dir apps/admin-api db:migration:up",
+		"db:migration:up:prod": "pnpm --dir apps/admin-api db:migration:up:prod",
 		"typecheck": "pnpm --dir apps/admin-api typecheck",
 		"test": "pnpm --dir apps/admin-api test",
 		"test:watch": "pnpm --dir apps/admin-api test:watch",

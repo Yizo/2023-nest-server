@@ -1,4 +1,5 @@
 import { config as loadDotenvFlow } from "dotenv-flow";
+import packageMetadata from "../../package.json";
 
 /** 应用允许的运行环境名称。 */
 export type NodeEnvironment = "development" | "test" | "production";
@@ -9,9 +10,12 @@ export interface AdminApiConfig {
 		name: string;
 		nodeEnv: string;
 		port: number;
+		version: string;
 	};
 	database: {
 		url: string;
+		synchronize: boolean;
+		debug: boolean;
 	};
 	redis: {
 		url: string;
@@ -28,6 +32,8 @@ export interface AdminApiConfig {
 		maxFiles: string;
 	};
 }
+
+export const ADMIN_API_VERSION = packageMetadata.version;
 
 /**
  * 返回当前 mode 要加载的文件名，顺序由低优先级到高优先级排列。
@@ -51,18 +57,26 @@ if (environmentResult.error) throw environmentResult.error;
 
 /** 将已经加载的 process.env 直接整理成模块统一消费的嵌套对象。 */
 export function createConfiguration(raw: NodeJS.ProcessEnv = process.env): AdminApiConfig {
+	const nodeEnv = raw.NODE_ENV || currentMode;
 	return {
 		app: {
 			name: raw.APP_NAME || "admin-api",
-			nodeEnv: raw.NODE_ENV || currentMode,
+			nodeEnv,
 			port: Number(raw.PORT || "3004"),
+			version: ADMIN_API_VERSION,
 		},
 		database: {
 			// production 为空时保留空字符串，让 MikroORM 在运行时报告错误。
 			url: raw.DATABASE_URL || "",
+			// production 强制关闭；其它环境可显式覆盖，development 默认开启。
+			synchronize: nodeEnv !== "production"
+				&& (raw.DATABASE_SYNCHRONIZE
+					? raw.DATABASE_SYNCHRONIZE === "true"
+					: nodeEnv === "development"),
+			debug: raw.DB_DEBUG === "true",
 		},
 		redis: {
-			// production 为空时保留空字符串，让 ioredis 在运行时报告错误。
+			// production 为空时保留空字符串，让 node-redis 在运行时报告错误。
 			url: raw.REDIS_URL || "",
 		},
 		cors: {

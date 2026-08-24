@@ -17,6 +17,7 @@ export class AppController {
 		const config = this.configService.getOrThrow<AdminApiConfig>("app");
 		return {
 			name: config.app.name,
+			version: config.app.version,
 			environment: config.app.nodeEnv,
 			message: "admin-api is running",
 		};
