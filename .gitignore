@@ -2,6 +2,7 @@
 dist
 /dist
 /node_modules
+admin-api-release.zip
 
 # Logs
 *.log
@@ -43,7 +44,3 @@ packages/**/*.map
 logs/*
 
 # Local environment files may contain credentials
-.env
-**/.env
-**/.env.*
-!**/.env.example

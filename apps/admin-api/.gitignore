@@ -1,0 +1,11 @@
+dist/
+node_modules/
+coverage/
+admin-api-release.zip
+logs/*
+!.gitkeep
+# 只有文件名包含 local 的本机覆盖配置不提交 Git。
+.env.local
+.env.*.local
+# SSH 私钥文件永远不提交 Git。
+*.pem

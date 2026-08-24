@@ -2,41 +2,24 @@
 	"$schema": "https://json.schemastore.org/nest-cli",
 	"collection": "@nestjs/schematics",
 	"monorepo": true,
-	"root": "apps/survey-statistics",
-	"sourceRoot": "apps/survey-statistics/src",
+	"root": "apps/admin-api",
+	"sourceRoot": "apps/admin-api/src",
 	"compilerOptions": {
-		"deleteOutDir": true
+		"deleteOutDir": true,
+		"webpack": false
 	},
 	"generateOptions": {
 		"spec": false,
 		"flat": false
 	},
 	"projects": {
-		"survey-statistics": {
+		"admin-api": {
 			"type": "application",
-			"root": "apps/survey-statistics",
+			"root": "apps/admin-api",
 			"entryFile": "main",
-			"sourceRoot": "apps/survey-statistics/src",
+			"sourceRoot": "apps/admin-api/src",
 			"compilerOptions": {
-				"tsConfigPath": "apps/survey-statistics/tsconfig.build.json"
-			}
-		},
-		"commons": {
-			"type": "library",
-			"root": "packages/commons",
-			"entryFile": "index",
-			"sourceRoot": "packages/commons",
-			"compilerOptions": {
-				"tsConfigPath": "packages/commons/tsconfig.json"
-			}
-		},
-		"utils": {
-			"type": "library",
-			"root": "packages/utils",
-			"entryFile": "index",
-			"sourceRoot": "packages/utils",
-			"compilerOptions": {
-				"tsConfigPath": "packages/utils/tsconfig.json"
+				"tsConfigPath": "apps/admin-api/tsconfig.build.json"
 			}
 		}
 	}

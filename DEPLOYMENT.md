@@ -1,285 +1,76 @@
-# 🚀 Monorepo 部署指南
+# admin-api 部署说明
 
-本文档说明如何部署 NestJS Monorepo 项目中的各个应用。
+当前仓库的部署主线是 `apps/admin-api`。PostgreSQL 和 Redis 由云服务器上的 1Panel/Docker 管理，应用本身使用 Node.js 进程运行；本阶段不在仓库内维护 Docker Compose 和数据库迁移。
 
-## 📦 构建产物结构
-
-```
-dist/
-├── apps/
-│   └── survey-statistics/
-│       └── src/
-│           ├── config/              # ✅ yml 配置文件已复制
-│           │   ├── config.yml
-│           │   ├── config.development.yml
-│           │   ├── config.production.yml
-│           │   ├── configuration.js
-│           │   └── configuration.js.map
-│           ├── logs/                # ✅ .gitignore 已复制
-│           │   └── .gitignore
-│           ├── modules/             # 业务模块
-│           └── main.js              # 入口文件
-└── packages/                        # 共享库
-```
-
-## 🐳 Docker 部署方式
-
-### 方式 1: 使用根目录统一部署（推荐用于开发）
-
-适合本地开发和集成测试，可以同时启动多个应用和基础服务。
+## 构建和启动
 
 ```bash
-# 启动 survey-statistics 和所有依赖服务
-docker-compose up -d
-
-# 只启动 survey-statistics
-docker-compose up -d survey-statistics
-
-# 查看日志
-docker-compose logs -f survey-statistics
-
-# 停止服务
-docker-compose down
-
-# 重新构建并启动
-docker-compose up -d --build survey-statistics
+pnpm install --frozen-lockfile
+pnpm build
+pnpm start
 ```
 
-### 方式 2: 使用应用独立部署（推荐用于生产）
+生产环境需要提供 `apps/admin-api/.env.production` 和系统环境变量。production 文件只保存非机密应用配置；DATABASE_URL/REDIS_URL、数据库账号密码和 Redis 密码必须通过 1Panel、systemd 或容器环境变量注入，地址使用 `127.0.0.1`。production 不使用 SSH 隧道，也不加载 `.env.local`。`.env.local` 只用于本地开发：
 
-适合独立部署单个应用到生产环境。
+```text
+NODE_ENV=production
+PORT=3004
+SWAGGER_ENABLED=false
+LOG_LEVEL=info
+LOG_DIR=logs
+
+# 线上连接信息必须由 1Panel/systemd/容器环境变量注入，并且必须包含数据库名。
+DATABASE_URL=postgresql://数据库用户:数据库密码@127.0.0.1:5432/数据库名
+REDIS_URL=redis://:Redis密码@127.0.0.1:26739/0
+```
+
+## 云数据库连接
+
+数据库端口不需要对公网防火墙开放。应用服务器或本地开发机通过 SSH 隧道连接云服务器主机上的 Docker 端口映射。
+
+本地开发使用：
 
 ```bash
-# 进入应用的 docker 目录
-cd apps/survey-statistics/docker
-
-# 启动服务（包含 MySQL 和 Redis）
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f survey-statistics
-
-# 停止服务
-docker-compose down
-
-# 重新构建并启动
-docker-compose up -d --build
+pnpm ssh:tunnel
 ```
 
-### 方式 3: 手动构建镜像（用于 CI/CD）
+本地开发的隧道配置写在 `.env.local`；production 不运行隧道脚本。production 连接说明见 [.env.production](</Users/yizuohua/Desktop/git/2023-nest-server/apps/admin-api/.env.production:1)。
+
+## 健康检查
 
 ```bash
-# 从项目根目录构建镜像
-docker build -t survey-statistics:1.0.0 \
-  -f apps/survey-statistics/docker/Dockerfile .
-
-# 推送到镜像仓库
-docker tag survey-statistics:1.0.0 your-registry/survey-statistics:1.0.0
-docker push your-registry/survey-statistics:1.0.0
-
-# 在生产环境运行
-docker run -d \
-  --name survey-statistics \
-  -p 3003:3003 \
-  -e NODE_ENV=production \
-  -e DB_HOST=your-db-host \
-  -e REDIS_HOST=your-redis-host \
-  -v /var/logs:/app/dist/apps/survey-statistics/src/logs \
-  your-registry/survey-statistics:1.0.0
+curl http://localhost:3004/api/v1/health/live
+curl http://localhost:3004/api/v1/health/ready
 ```
 
-## 🔧 环境变量配置
+- `live` 只检查 Node/Nest 进程是否存活。
+- `ready` 检查 PostgreSQL 和 Redis 是否真正可连接。
+- 依赖不可用时返回 HTTP 503，不会自动修改数据库结构。
 
-### 开发环境
+## 日志
 
-配置文件：`apps/survey-statistics/src/config/config.development.yml`
+开发和生产环境的 Winston 日志写入应用本地目录：
 
-### 生产环境
-
-**方式 1: 使用配置文件**
-
--   修改：`apps/survey-statistics/src/config/config.production.yml`
--   重新构建镜像
-
-**方式 2: 使用环境变量（推荐）**
-
-在 `docker-compose.yml` 中配置或使用 `.env` 文件：
-
-```yaml
-environment:
-    - NODE_ENV=production
-    - PORT=3003
-    - DB_TYPE=mysql
-    - DB_HOST=your-db-host
-    - DB_PORT=3306
-    - DB_USERNAME=your-username
-    - DB_PASSWORD=your-password
-    - DB_DATABASE=survey_db
-    - REDIS_HOST=your-redis-host
-    - REDIS_PORT=6379
-    - REDIS_PASSWORD=your-redis-password
-    - JWT_SECRET=your-jwt-secret
-    - JWT_EXPIRATION=1h
+```text
+apps/admin-api/logs/info/
+apps/admin-api/logs/warn/
+apps/admin-api/logs/error/
+apps/admin-api/logs/exceptions/
 ```
 
-## 🔍 健康检查
+日志按天和文件大小轮转，日志不执行脱敏，应通过服务器文件权限保护日志目录。
 
-应用包含健康检查功能：
+## 数据库备份
+
+数据库备份和恢复由 PostgreSQL 工具或 1Panel 负责：
 
 ```bash
-# 检查应用是否正常运行
-curl http://localhost:3003/health
-
-# Docker 自动健康检查
-# 在 Dockerfile 中已配置，会自动监控应用状态
+pg_dump --format=custom --file=admin-api.dump "$DATABASE_URL"
+pg_restore --clean --if-exists --dbname="$DATABASE_URL" admin-api.dump
 ```
 
-## 📊 日志管理
+备份恢复不等于增量数据库迁移。真正开始设计业务表和字段版本后，再单独引入并评估 MikroORM Migration。
 
-### 日志位置
+## 旧目录说明
 
--   **容器内**: `/app/dist/apps/survey-statistics/src/logs/`
--   **宿主机**: 通过 volume 映射
-
-### 挂载日志目录
-
-在 `docker-compose.yml` 中已配置：
-
-```yaml
-volumes:
-    - ./logs:/app/dist/apps/survey-statistics/src/logs
-```
-
-查看日志：
-
-```bash
-# 查看容器日志
-docker logs survey-statistics-app -f
-
-# 查看应用日志（如果挂载了）
-tail -f apps/survey-statistics/logs/*.log
-```
-
-## 🛠️ 故障排查
-
-### 1. 配置文件找不到
-
-检查配置文件是否正确复制到构建产物：
-
-```bash
-# 检查本地构建产物
-ls -la dist/apps/survey-statistics/src/config/
-
-# 检查容器内文件
-docker exec survey-statistics-app \
-  ls -la /app/dist/apps/survey-statistics/src/config/
-```
-
-### 2. 数据库连接失败
-
-检查环境变量和网络连接：
-
-```bash
-# 查看容器环境变量
-docker exec survey-statistics-app env | grep DB_
-
-# 测试数据库连接
-docker exec survey-statistics-app \
-  ping mysql -c 3
-```
-
-### 3. 应用启动失败
-
-查看详细日志：
-
-```bash
-# 查看容器启动日志
-docker logs survey-statistics-app --tail=100
-
-# 进入容器排查
-docker exec -it survey-statistics-app sh
-cd /app
-ls -la dist/apps/survey-statistics/src/
-```
-
-### 4. 端口冲突
-
-修改端口映射：
-
-```yaml
-ports:
-    - "13003:3003" # 宿主机:容器
-```
-
-## 📚 相关命令速查
-
-### 开发命令
-
-```bash
-# 开发模式（热重载）
-pnpm survey:dev
-
-# 调试模式
-pnpm survey:debug
-
-# 构建
-pnpm survey:build
-
-# 运行生产版本
-pnpm survey:start
-```
-
-### Docker 命令
-
-```bash
-# 构建镜像
-docker-compose build survey-statistics
-
-# 启动服务
-docker-compose up -d survey-statistics
-
-# 重启服务
-docker-compose restart survey-statistics
-
-# 查看日志
-docker-compose logs -f survey-statistics
-
-# 停止服务
-docker-compose stop survey-statistics
-
-# 删除服务
-docker-compose down survey-statistics
-
-# 完全清理（包括数据卷）
-docker-compose down -v
-```
-
-## 🚀 CI/CD 建议
-
-### GitLab CI 示例
-
-```yaml
-build:
-    stage: build
-    script:
-        - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA \
-          -f apps/survey-statistics/docker/Dockerfile .
-        - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-
-deploy:
-    stage: deploy
-    script:
-        - docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-        - docker stop survey-statistics || true
-        - docker rm survey-statistics || true
-        - docker run -d --name survey-statistics \
-          -p 3003:3003 \
-          --env-file .env.production \
-          $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-```
-
-## 📖 更多信息
-
--   应用文档: `apps/survey-statistics/README.md`
--   NestJS Monorepo: https://docs.nestjs.com/cli/monorepo
--   Docker Compose: https://docs.docker.com/compose/
+旧的 `survey-statistics` 和 `nest-admin` 目录暂时保留，但已经从 pnpm workspace、根目录 Nest CLI 和默认构建/启动/测试命令中移出；本次新架构不依赖它们。
