@@ -6,7 +6,7 @@ import {
 	NestInterceptor,
 } from "@nestjs/common";
 import { catchError, tap, throwError, type Observable } from "rxjs";
-import type { RequestWithId } from "../types";
+import type { RequestWithId } from "@/common/types";
 
 /** 记录 HTTP 请求耗时和结果；请求体不写入日志，避免误记业务敏感数据。 */
 @Injectable()

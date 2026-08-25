@@ -1,42 +1,209 @@
 # admin-api
 
-`admin-api` 是一个独立的 NestJS 后端，位于 `apps/admin-api`。它与仓库中的 `survey-statistics` 完全分开，不复用旧业务模块、旧 Query Builder 或旧的数据库结构。
+`admin-api` 是独立的 NestJS 11 后端，使用 PostgreSQL、MikroORM 7、官方 `@mikro-orm/nestjs` 和 Redis 官方 Node.js 客户端。
 
-## 当前范围
+## 环境要求
 
-- NestJS 11.2.1 + TypeScript 6.0.3。
-- PostgreSQL + MikroORM 7.1.13，通过 `@mikro-orm/nestjs` 注入；启动不自动建表或改表。
-- 结构变化使用官方 MikroORM CLI 生成并执行 Migration；HTTP 进程不跑 migration。
-- Redis 使用 `redis` 客户端做基础连接和 `PING`，不接入 BullMQ。
-- 应用启动前会探测 PostgreSQL 和 Redis，任一未就绪则进程退出，避免半就绪服务进入反向代理。
-- `.env`、`.env.production`、`.env.local` 和系统环境变量配置，不使用 YAML。
-- `dotenv-flow` 负责环境文件层级；应用代码只整理嵌套配置对象。
-- development 优先级：系统环境变量 > `apps/admin-api/.env.local` > `apps/admin-api/.env` > 代码默认值。
-- production 优先级：系统环境变量 > `apps/admin-api/.env.production` > `apps/admin-api/.env` > 代码默认值；production 不加载 `.env.local`。`DATABASE_URL` / `REDIS_URL` 为空时由运行时或启动检查报错。
-- 全局异常过滤器、响应拦截器、请求日志、ValidationPipe、Request ID 中间件和认证占位守卫。
-- Winston 控制台日志和按级别每日滚动的本地文件日志。
-- `live` / `ready` 健康检查和 Swagger 文档。
+- Node.js ≥ 22.17。
+- pnpm 10。
+- PostgreSQL。
+- Redis。
+- 本地连接远程服务时可使用项目 SSH 隧道脚本。
 
-## 本地启动
+## Development：自动同步模式
 
-在仓库根目录执行。Node.js ≥ 22.17，pnpm 10。先在 `apps/admin-api/.env.local` 配好 `DATABASE_URL`、`REDIS_URL` 和 SSH。
+适合快速修改实体和个人开发数据库。
 
-1. `pnpm install`
-2. 一个终端：`pnpm ssh:tunnel`
-3. 另一个终端：`pnpm start:dev`
+在 `.env.local` 中配置：
 
-默认 `http://localhost:3004`。库或 Redis 连不上时进程会退出。
+```env
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+DATABASE_SYNCHRONIZE=true
+```
+
+在仓库根目录执行：
+
+```bash
+pnpm install
+pnpm ssh:tunnel
+pnpm start:dev
+```
+
+`start:dev` 会：
+
+1. 连接 PostgreSQL。
+2. 允许创建目标数据库。
+3. 执行完整实体结构同步。
+4. 检查 PostgreSQL 和 Redis。
+5. 启动 HTTP 服务。
+
+不要在已经由自动同步创建结构的同一个 `public` schema 上执行尚未标记的 baseline migration。Migration 的真实执行使用 `pnpm test:db` 在临时 schema 中验证。
+
+## Development：Migration 模式
+
+适合共享开发库、migration 联调和 production 上线前模拟。
+
+在 `.env.local` 中配置：
+
+```env
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+DATABASE_SYNCHRONIZE=false
+```
+
+在仓库根目录执行：
+
+```bash
+pnpm install
+pnpm ssh:tunnel
+pnpm db:migration:up
+pnpm start:dev
+```
+
+此模式下 HTTP 应用不会自动创建数据库或修改表，数据库结构只由显式执行的 migration 更新。
+`db:migration:up` 失败时不要继续启动应用。
+
+## 修改实体与生成 Migration
+
+修改 `*.entity.ts` 后执行：
+
+```bash
+pnpm db:migration:create
+pnpm db:migration:check
+pnpm test:db
+```
+
+步骤：
+
+1. 修改实体。
+2. 执行 `db:migration:create` 生成 migration 和 snapshot。
+3. 执行 `db:migration:check` 检查实体差异。
+4. 审查 `apps/admin-api/src/infrastructure/database/migrations`。
+5. 确认没有 `FOREIGN KEY` 或 `REFERENCES`。
+6. 使用 `test:db` 在随机临时 schema 中执行全部 migration。
+7. 确认首次 up、第二次 no-op、事务回滚和字典 CRUD 均通过。
+
+`pack-release` 会自动按顺序执行 `db:migration:create` 和 `db:migration:check`。需要把 migration 应用到当前 development 数据库时，再显式执行 `pnpm db:migration:up`。生产服务器只执行编译后的 `pnpm db:migration:up:prod`。
+
+## 测试
+
+不连接真实基础设施的检查：
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm test:e2e
+pnpm build
+```
+
+真实 PostgreSQL 测试：
+
+```bash
+pnpm test:db
+```
+
+`test:db`：
+
+- 使用 `.env.local` 的 DATABASE_URL。
+- 创建随机 `admin_api_migration_test_*` schema。
+- 不修改 `public`。
+- 测试完成后精确删除本次 schema。
+- DATABASE_URL 为空或账号不能创建 schema 时明确失败。
+
+普通 unit 和 E2E 不执行真实 migration。
+
+## Production 部署
+
+production 必须设置：
+
+```env
+NODE_ENV=production
+DATABASE_SYNCHRONIZE=false
+```
+
+即使误设 `DATABASE_SYNCHRONIZE=true`，代码仍会强制关闭同步。
+
+### 1. 本地生成发布包
+
+在仓库根目录执行：
+
+```bash
+pnpm pack:release
+```
+
+该命令会先在本地生成并检查 migration，再执行 production build，检查 compiled ORM 配置、migration、snapshot 和 production 快捷命令，然后生成：
+
+```text
+apps/admin-api/admin-api-release.zip
+```
+
+### 2. 上传并解压
+
+将 `admin-api-release.zip` 上传到服务器并解压。真实 `DATABASE_URL`、`REDIS_URL` 等配置通过 1Panel、systemd、容器或服务器环境变量注入，不修改归档中的源码配置。
+
+### 3. 服务器安装、迁移和启动
+
+在服务器解压后的项目根目录依次执行：
+
+```bash
+pnpm install --prod
+pnpm db:migration:up:prod
+pnpm start:prod
+```
+
+顺序不可交换：
+
+1. 本地通过 `pnpm pack:release` 生成经过检查的归档。
+2. 上传并解压归档。
+3. 安装 production 依赖。
+4. 执行 compiled migration。
+5. migration 成功后启动应用。
+
+禁止：
+
+- production 使用 `start:dev`。
+- production 依赖 `.env.local`。
+- migration 失败后继续启动。
+- production HTTP 进程执行 SchemaGenerator 或 migration。
+
+归档必须包含 compiled ORM 配置、compiled migration、snapshot 和 production CLI 依赖。
+
+## 常用命令
+
+以下命令均在根 `package.json` 和 `apps/admin-api/package.json` 中提供快捷脚本：
+
+```text
+build
+start
+start:dev
+start:prod
+pack:release
+ssh:tunnel
+db:migration:create
+db:migration:check
+db:migration:up
+db:migration:up:prod
+typecheck
+test
+test:watch
+test:e2e
+test:db
+```
 
 ## HTTP 接口
 
 ```text
-GET /api/v1/                 应用名称、版本、环境
-GET /api/v1/health/live      进程存活，不访问外部依赖
-GET /api/v1/health/ready     PostgreSQL 和 Redis 就绪检查
-GET /api/v1/docs             Swagger UI（SWAGGER_ENABLED 控制）
+GET /api/v1/                    应用信息
+GET /api/v1/health/live         进程存活
+GET /api/v1/health/ready        PostgreSQL 和 Redis 就绪
+GET /api/v1/docs                Swagger UI
+
+/api/v1/dict/types              字典类型 CRUD
+/api/v1/dict/data               字典数据 CRUD
 ```
 
-成功响应：
+成功响应使用统一外壳：
 
 ```json
 {
@@ -44,58 +211,26 @@ GET /api/v1/docs             Swagger UI（SWAGGER_ENABLED 控制）
 	"message": "成功",
 	"data": {},
 	"requestId": "请求标识",
-	"timestamp": "2026-08-21T00:00:00.000Z"
+	"timestamp": "ISO 时间"
 }
 ```
 
-普通错误使用 HTTP 状态码作为 `code`，不按业务模块堆错误码。
+## 启动与健康检查
 
-## 数据库迁移
+应用在监听 HTTP 前检查：
 
-HTTP 启动不会改表。先改实体并写入 MikroORM `entities`，隧道保持连接。
+- PostgreSQL 连接。
+- Redis PING。
 
-本地：
+任一失败则关闭已创建资源并退出。
 
-1. `pnpm db:migration:create`
-2. 审查 `apps/admin-api/src/infrastructure/database/migrations/Migration*.ts`
-3. `pnpm db:migration:up`
+应用启动时不扫描 migration 状态。development migration 模式和 production 都必须先执行对应的 `db:migration:up` 快捷命令，再启动 HTTP 应用。
 
-可选：`pnpm db:migration:status` 看待执行，`pnpm db:migration:check` 核对实体与库是否一致。
+运行期：
 
-生产（先发布 `dist`，再升库，最后起服务）：
+- `/health/live` 不访问外部依赖。
+- `/health/ready` 检查 PostgreSQL 和 Redis。
 
-1. `pnpm db:migration:up:prod`
-2. `pnpm start`
+## 日志
 
-## 日志文件
-
-日志默认写入 `apps/admin-api/logs`，由 `LOG_DIR` 控制：
-
-```text
-logs/
-├── info/
-├── warn/
-├── error/
-└── exceptions/
-```
-
-开发和生产写入本地文件，测试环境不落盘。按天轮转，单文件默认最大 20 MB；保留天数由 `LOG_MAX_FILES` 控制（`.env` 为 20 天，`.env.production` 为 90 天）。日志不脱敏，需限制目录权限。该目录已加入 Git 忽略。
-
-## 开发检查
-
-```bash
-pnpm --dir apps/admin-api typecheck
-pnpm --dir apps/admin-api build
-pnpm --dir apps/admin-api test
-pnpm --dir apps/admin-api test:e2e
-```
-
-端到端测试会 mock 基础设施启动检查和健康检查，不要求当时连上远程库。生产部署需要 `.env.production`，且不会加载 `.env.local`。
-
-若 IDE 被强制结束、收到 `SIGKILL`，或旧进程已变成守护进程，应用无法自行清理。先查端口占用：
-
-```bash
-lsof -nP -iTCP:3004 -sTCP:LISTEN
-```
-
-确认 PID 属于本项目后再结束；不要杀归属不明的进程。
+日志默认写入 `apps/admin-api/logs`。日志不得记录数据库或 Redis 完整连接串、用户名和密码。

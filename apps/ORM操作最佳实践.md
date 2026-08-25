@@ -1,460 +1,342 @@
-# TypeORM/MikroORM 工程级最佳实践手册
+# TypeORM / MikroORM 工程级最佳实践
 
-> **架构核心理念**：数据库仅作存储引擎，计算与关联压力上移至应用层，服务可水平扩展。
+本文将规则分为四层，避免把项目约定误写成普适性能定律：
 
-## 一、基础架构规范
+1. **强制正确性**：违反后可能产生错误数据、无界查询或连接泄漏。
+2. **默认性能策略**：通常应采用，但允许基于数据量和执行计划调整。
+3. **按场景选择**：JOIN、populate、select-in、IDs + Map 等没有唯一答案。
+4. **证据验收**：用 SQL 次数、`EXPLAIN (ANALYZE, BUFFERS)`、p95 和连接池占用判断。
 
-### 1.1 物理外键
+## 一、项目数据库政策
+
+### 1.1 不创建物理外键
+
+admin-api 保留 ORM 关系，但 PostgreSQL 不创建物理外键：
 
 ```typescript
-@ManyToOne(() => User, { createForeignKeyConstraints: false })
+@ManyToOne(() => UserEntity, {
+	createForeignKeyConstraint: false,
+})
 @Index()
-user: User;
+user!: Rel<UserEntity>;
 ```
 
--   **强制要求**：所有 `@ManyToOne` / `@OneToOne` 必须设置 `createForeignKeyConstraints: false`，数据库不维护引用完整性
--   **代价**：写入顺序和事务回滚由应用层全权负责
-
-### 1.2 数据库索引（性能生命线）
-
--   **强制要求**：所有外键字段必须加 `@Index()`
--   **理由**：物理外键禁用后，索引是关联查询性能的唯一保障，缺失会导致全表扫描
+ORM 配置再提供全局保护：
 
 ```typescript
-@Entity()
-export class Post {
-	@ManyToOne(() => User, { createForeignKeyConstraints: false })
-	@Index() // 👈 必须加
-	user: User;
+schemaGenerator: {
+	createForeignKeyConstraints: false,
 }
 ```
 
-### 1.3 字段查询原则
+这是本项目在明确部署和运维约束下的政策，不是所有 PostgreSQL 项目的通用性能结论。代价是：
+
+- Service 必须校验关联对象存在且有效。
+- 多表写入必须使用事务。
+- 删除主记录时必须由应用处理关联记录。
+- 跨表唯一性必须使用锁、冗余键或其它并发控制。
+- 需要定期检查孤立数据。
+
+### 1.2 关联索引按查询模式设计
+
+关联列通常需要索引，但不能机械地为每列重复创建索引：
+
+- 等值查找优先单列或复合索引的最左前缀。
+- active 数据使用 partial index，例如 `WHERE deleted_at IS NULL`。
+- 已有 unique/composite index 能覆盖查询时，不再重复建单列索引。
+- 每个索引都会增加写放大、存储和 VACUUM 成本。
+
+## 二、查询边界
+
+### 2.1 列表必须有数量边界
+
+业务列表至少满足一种边界：
+
+- `where` 过滤。
+- `limit` / `take`。
+- cursor。
+- 明确的小型字典全量缓存，上限由业务约束保证。
+
+禁止无界读取大表：
 
 ```typescript
-// ✅ 正确
-const users = await repo.find({
-	select: ["id", "name", "email"],
-});
+// 错误：未知数据量
+await em.find(UserEntity, {});
 
-// ❌ 绝对禁止
-const users = await repo.find(); // 等同于 SELECT *
+// 正确：条件、排序和数量边界明确
+await em.find(
+	UserEntity,
+	{ deletedAt: null },
+	{
+		fields: ["id", "name"],
+		orderBy: { id: "asc" },
+		limit: 100,
+	},
+);
 ```
 
--   **强制要求**：所有查询必须显式 `.select()` 指定字段
--   **理由**：减少网络传输、降低内存占用、防止敏感字段泄露
+### 2.2 字段选择是默认策略
 
-### 1.4 WHERE 条件铁律
+以下场景必须显式选择字段：
+
+- HTTP API 列表和详情。
+- 宽表。
+- 包含密码、令牌、内部备注等敏感字段的实体。
+- populate 关系。
+- 批量任务和导出。
 
 ```typescript
-// ❌ 绝对禁止（开发调试都可能打爆数据库）
-const all = await repo.find();
-
-// ✅ 正确：必须带条件
-const users = await repo.find({
-	where: { id: MoreThan(lastId) },
-});
+await em.findOne(
+	UserEntity,
+	{ id, deletedAt: null },
+	{ fields: ["id", "name", "email"] },
+);
 ```
 
--   **强制要求**：所有 `.find()` 必须带 `where` 条件
--   **例外**：仅当表明确为字典表（< 5000 条）且用于本地缓存初始化时允许
+窄表内部主键检查只取 `id`；受管实体更新应包含待修改字段和响应所需字段。不要为了复用建立复杂的通用字段选择框架。
 
-## 二、查询规范
+### 2.3 模糊查询和索引
 
-### 2.1 单表查询
+`ILIKE '%keyword%'` 无法使用普通 B-tree 前缀索引。数据量小的字典表可以接受；数据增长后应根据实际查询改用：
+
+- 前缀匹配。
+- `pg_trgm` GIN/GiST。
+- 搜索服务。
+
+优化前先记录数据量和执行计划。
+
+## 三、关联加载策略
+
+### 3.1 不把 JOIN 或 populate 一律判错
+
+选择策略时先看关系基数和结果上限：
+
+| 场景 | 推荐策略 |
+|---|---|
+| bounded ManyToOne / OneToOne | JOIN 或 MikroORM BALANCED populate |
+| 一个小型 to-many | select-in 或受控 JOIN |
+| 多个 to-many | select-in，避免笛卡尔积 |
+| 子表结果大 | 独立分页接口 |
+| 多组结果需复用 | IDs + 分块查询 + Map |
+
+MikroORM 示例：
 
 ```typescript
-// ✅ 走索引查询
-const user = await repo.findOne({
-	where: { id: userId },
-	select: ["id", "name", "email"],
-});
+await em.find(
+	OrderEntity,
+	{ status: "paid" },
+	{
+		populate: ["user"],
+		strategy: LoadStrategy.JOINED,
+		fields: ["id", "total", "user.id", "user.name"],
+		limit: 100,
+	},
+);
 ```
 
--   **最佳实践**：直接走主键/索引查询，取回原始数据
--   **禁止**：单表查询中使用 `relations` 触发隐式 JOIN
+### 3.2 IDs + Map 的适用场景
 
-### 2.2 多表联合查询（核心范式）
+当多个 to-many JOIN 会产生行数膨胀时：
 
-**原则：先查主表 → 提取 IDs → 分块并发查子表 → 内存 Map 组装**
-
-```typescript
-import { In } from "typeorm";
-import { chunk } from "lodash";
-
-async function getPostsWithAuthorsAndComments(page: number, pageSize: number = 20) {
-	// 1️⃣ 主表分页查询（数据库层，走索引，LIMIT 截断）
-	const posts = await postRepo.find({
-		where: { status: "published" },
-		order: { createTime: "DESC" },
-		skip: (page - 1) * pageSize,
-		take: pageSize,
-		select: ["id", "title", "content", "authorId"],
-	});
-
-	if (posts.length === 0) return { list: [] };
-
-	// 2️⃣ 提取关联 ID（必须去重）
-	const authorIds = [...new Set(posts.map((p) => p.authorId))];
-	const postIds = posts.map((p) => p.id);
-
-	// 3️⃣ 分块 + 并行查询子表（Promise.all 压满网络 IO）
-	// 分块防止 SQL 过长（IN 子句长度限制）
-	const authorChunks = chunk(authorIds, 500);
-	const commentChunks = chunk(postIds, 500);
-
-	const [authorResults, commentResults] = await Promise.all([
-		Promise.all(
-			authorChunks.map((ids) =>
-				userRepo.find({
-					where: { id: In(ids) },
-					select: ["id", "name", "avatar"],
-				}),
-			),
-		),
-		Promise.all(
-			commentChunks.map((ids) =>
-				commentRepo.find({
-					where: { postId: In(ids) },
-					select: ["id", "content", "postId"],
-					take: 5, // ⚠️ 关键：限制每条文章的评论数量，防止数据爆炸
-				}),
-			),
-		),
-	]);
-
-	const authors = authorResults.flat();
-	const comments = commentResults.flat();
-
-	// 4️⃣ 内存 Map 组装（O(n) 时间复杂度，严禁循环内 find）
-	const authorMap = new Map(authors.map((a) => [a.id, a]));
-	const commentMap = new Map();
-	comments.forEach((c) => {
-		if (!commentMap.has(c.postId)) commentMap.set(c.postId, []);
-		commentMap.get(c.postId).push(c);
-	});
-
-	// 5️⃣ 挂载返回
-	return posts.map((post) => ({
-		...post,
-		author: authorMap.get(post.authorId) || null,
-		comments: commentMap.get(post.id) || [],
-	}));
-}
+```text
+查询主表分页
+  ↓
+提取并去重关联 ID
+  ↓
+按 200～500 分块
+  ↓
+按连接池容量限制并发
+  ↓
+Map 组装
 ```
 
-### 2.3 子表数据量爆炸陷阱
-
-| 场景                  | 正确做法                             | 错误做法                          |
-| :-------------------- | :----------------------------------- | :-------------------------------- |
-| 列表页展示评论数      | 用 `.count()` + `groupBy` 聚合       | `.find()` 拉取全部评论内容        |
-| 列表页展示前 N 条评论 | 子表查询加 `.take(N)`                | 无条件拉取全部                    |
-| 详情页展示全部评论    | 独立接口分页查询评论，不跟主表一起查 | 在主表查询中 `LEFT JOIN` 全部评论 |
+不能无界执行：
 
 ```typescript
-// ✅ 列表页只查评论数
-const commentCounts = await commentRepo
-	.createQueryBuilder("c")
-	.select("c.postId", "postId")
-	.addSelect("COUNT(*)", "count")
-	.where("c.postId IN (:...postIds)", { postIds })
-	.groupBy("c.postId")
-	.getRawMany();
+await Promise.all(allChunks.map(loadChunk));
 ```
 
-### 2.4 绝对禁止：N+1 查询
+并发数必须小于连接池可用连接，例如使用 2～4 个 worker。
+
+### 3.3 禁止 N+1
+
+禁止循环内执行关联查询或逐条写入：
 
 ```typescript
-// ❌ 万恶之源：循环内查询
-const users = await userRepo.find();
 for (const user of users) {
-	user.posts = await postRepo.find({ where: { userId: user.id } });
-	// 100 个用户 = 101 条 SQL
+	await em.find(PostEntity, { user });
 }
+```
 
-// ✅ 正确：批量查询 + Map 组装
-const users = await userRepo.find();
-const userIds = users.map((u) => u.id);
-const posts = await postRepo.find({ where: { userId: In(userIds) } });
-const postMap = new Map();
-posts.forEach((p) => {
-	if (!postMap.has(p.userId)) postMap.set(p.userId, []);
-	postMap.get(p.userId).push(p);
+应改为 populate、批量 `IN` 或聚合查询。
+
+### 3.4 每个父记录前 N 条
+
+在 `WHERE parent_id IN (...)` 的普通查询上设置 `limit: 5`，只能限制总结果为 5 条，不能保证每个父记录 5 条。
+
+正确方案：
+
+- PostgreSQL `ROW_NUMBER() OVER (PARTITION BY ...)`。
+- LATERAL JOIN。
+- MikroORM per-parent populate limit。
+- 独立分页接口。
+
+## 四、写入与并发一致性
+
+### 4.1 单表写入
+
+单实体 `flush()` 会由 MikroORM Unit of Work 处理。批量更新使用 `nativeUpdate`，但要明确它会绕过实体生命周期逻辑：
+
+```typescript
+await em.nativeUpdate(
+	TaskEntity,
+	{ id: { $in: ids } },
+	{ status: "done" },
+);
+```
+
+禁止循环内逐条 flush。
+
+### 4.2 多表写入使用事务
+
+MikroORM 使用编程式事务：
+
+```typescript
+await em.transactional(async (tx) => {
+	// 只执行本地数据库操作
 });
 ```
 
-## 三、写入规范
+TypeORM 对应 `QueryRunner`；不要把 TypeORM API 当成 MikroORM 的强制写法。
 
-### 3.1 单表写入
+事务内禁止：
+
+- HTTP / RPC。
+- Redis。
+- MQ。
+- 文件系统。
+- 无界循环。
+- 用户交互等待。
+
+### 4.3 无物理外键时的写入顺序
+
+```text
+新增：主表 → 关联表
+删除：关联表 → 子表 → 主表
+```
+
+全部步骤在同一事务中完成。
+
+### 4.4 跨表唯一性需要锁
+
+如果唯一键分散在两张表，普通 unique index 无法约束。仅执行“先查后写”存在并发竞态。
+
+推荐锁定稳定的父记录：
 
 ```typescript
-// ✅ 批量更新（1 条 SQL）
-await repo.update({ id: In(ids) }, { status: "done" });
-
-// ✅ 批量插入（1 条 SQL）
-await repo.insert([{ name: "A" }, { name: "B" }]);
-
-// ❌ 绝对禁止：循环内逐条操作
-for (const item of items) {
-	await repo.save(item); // N 条 SQL，连接池杀手
-}
+await em.findOne(
+	DictTypeEntity,
+	{ id: typeId },
+	{ lockMode: LockMode.PESSIMISTIC_WRITE },
+);
 ```
 
-### 3.2 多表联合写入——必须使用事务
+固定锁顺序，缩短事务时间。相同父记录写入串行，不同父记录保持并行。
 
-**事务内操作顺序铁律：**
+### 4.5 嵌套事务和声明式事务
 
--   **新增/修改**：先主表 → 再从表（先获取主表生成的 ID）
--   **删除**：先从表 → 再主表（先清理孤儿数据）
+Savepoint 和 `@Transactional()` 不是天然错误，MikroORM支持它们。但本项目默认：
+
+- Service 使用显式 `em.transactional()`。
+- 不引入事务装饰器。
+- 不隐式嵌套业务事务。
+- 如果未来确需嵌套，必须明确 propagation 和锁顺序。
+
+## 五、跨服务一致性
+
+禁止在数据库事务中调用外部服务。
+
+标准 transactional outbox：业务数据与 outbox 记录必须写入同一事务：
 
 ```typescript
-async function deleteUserWithRelatedData(userId: number) {
-	const queryRunner = dataSource.createQueryRunner();
-	await queryRunner.connect();
-	const startTime = Date.now();
-
-	try {
-		await queryRunner.startTransaction();
-
-		// 1️⃣ 先删子表（从表）
-		await queryRunner.manager.delete(Post, { userId });
-		await queryRunner.manager.delete(Comment, { userId });
-		await queryRunner.manager.delete(Profile, { userId });
-
-		// 2️⃣ 再删主表
-		await queryRunner.manager.delete(User, { id: userId });
-
-		await queryRunner.commitTransaction();
-
-		// 3️⃣ 长事务监控
-		const duration = Date.now() - startTime;
-		if (duration > 500) {
-			logger.warn(`Long Transaction: ${duration}ms, userId: ${userId}`);
-		}
-	} catch (error) {
-		await queryRunner.rollbackTransaction();
-		logger.error("Transaction failed, rollback completed", error);
-		throw error;
-	} finally {
-		await queryRunner.release();
-	}
-}
+await em.transactional(async (tx) => {
+	tx.persist(order);
+	tx.persist(outboxEvent);
+});
 ```
 
-## 四、事务管理工程铁律
+事务提交后由异步 worker 投递；投递成功后幂等标记 outbox 完成。
 
-### 4.1 强制使用编程式事务
+## 六、分页与批处理
 
-```typescript
-// ✅ 正确：显式 QueryRunner
-const qr = dataSource.createQueryRunner();
-await qr.connect();
-await qr.startTransaction();
-try {
-	/* ... */ await qr.commitTransaction();
-} catch {
-	await qr.rollbackTransaction();
-} finally {
-	await qr.release();
-}
+- 后台浅分页：offset + limit 可接受。
+- 深分页：cursor / keyset。
+- 全量导出：按主键游标分批。
+- 字典缓存：仅在确认上限后允许全量加载。
+- 所有批处理都要限制单批大小和并发数。
 
-// ❌ 绝对禁止：声明式事务（装饰器/注解）
-// @Transaction()  // Node.js 异步环境下极易连接泄漏
-// @Transactional()
+## 七、Schema 与 Migration
+
+### 7.1 默认不自动同步
+
+```env
+DATABASE_SYNCHRONIZE=false
 ```
 
-**理由**：
+未配置时同样为 false。
 
--   声明式事务依赖代理捕获异常，Node.js 异步环境下 `Promise.reject` 可能未被正确捕获，导致 `QueryRunner` 永不释放，连接池耗尽
--   编程式事务边界在 Code Review 时一目了然
+### 7.2 Development 显式完整同步
 
-### 4.2 严格禁止事务嵌套
+只有非 production 显式设置：
 
-```typescript
-// ❌ 绝对禁止
-await qr.startTransaction();
-try {
-	await qr.startTransaction(); // 嵌套！会导致死锁风险
-	// ...
-} catch {
-	/* ... */
-}
+```env
+DATABASE_SYNCHRONIZE=true
 ```
 
-**理由**：数据库嵌套事务本质是 Savepoint，内层回滚时外层持有的锁不释放，极易死锁
+应用才执行无 safe/drop 限制的 `schema.update()`。它可能创建、修改或删除表、字段和索引，只允许用于可重建的个人开发库。
 
-### 4.3 严禁长时间事务
+### 7.3 Production migration-only
 
-| 级别    | 阈值    | 行动               |
-| :------ | :------ | :----------------- |
-| 🔴 高危 | > 1 秒  | 阻断上线，必须拆分 |
-| 🟡 警告 | > 200ms | 核心链路必须优化   |
+production 永远关闭同步：
 
-**事务内绝对禁止的操作：**
-
--   ❌ 远程 RPC/HTTP 调用（axios/fetch）
--   ❌ Redis/MQ 等网络 IO
--   ❌ 复杂循环计算（> 1000 次）
--   ✅ 仅允许：纯粹的 CRUD 操作
-
-**监控 SQL（DBA 巡检）：**
-
-```sql
--- MySQL
-SELECT * FROM information_schema.innodb_trx
-WHERE TIME_TO_SEC(timediff(now(), trx_started)) > 1;
-
--- PostgreSQL
-SELECT pid, now() - xact_start AS duration, query
-FROM pg_stat_activity
-WHERE state = 'active' AND now() - xact_start > interval '1 seconds';
+```text
+安装依赖
+  ↓
+只读 migration status
+  ↓
+migration up
+  ↓
+启动应用
 ```
 
-### 4.4 跨服务调用——分布式一致性
+Migration 与 snapshot 同时版本控制。应用启动只读检查全部实体表和 migration，不执行 DDL。
 
-```typescript
-// ❌ 万恶之源：远程调用在事务内
-await qr.startTransaction();
-try {
-	await saveLocal();
-	await axios.post("/external"); // 网络IO在事务内！
-	await qr.commitTransaction();
-} catch {
-	qr.rollback();
-}
-```
+## 八、性能验收
 
-**正确方案 A（先外后内 + 补偿）：**
+性能结论必须记录证据：
 
-```typescript
-// 1️⃣ 先调外部服务
-const extResult = await callExternal(data);
-// 2️⃣ 外部成功，再开本地事务
-const qr = dataSource.createQueryRunner();
-await qr.startTransaction();
-try {
-	await saveLocal(extResult.id);
-	await qr.commitTransaction();
-} catch (dbError) {
-	await qr.rollbackTransaction();
-	// 3️⃣ 立即调用外部冲正/补偿接口
-	await callExternalCompensation(extResult.id);
-	throw new Error("分布式事务已回滚，外部已补偿");
-}
-```
+- SQL 数量。
+- 返回行数和字段数。
+- `EXPLAIN (ANALYZE, BUFFERS)`。
+- p50 / p95 / p99。
+- PostgreSQL CPU、IO 和锁等待。
+- 连接池 active / idle / wait。
+- Node.js heap 和事件循环延迟。
 
-**正确方案 B（本地任务表 + 最终一致性）：**
+事务时长的 200ms/1s 只能作为初始观察值，最终阈值按业务 SLO 和锁影响调整。
 
-```typescript
-// 本地事务：只写任务表，不写业务表
-await qr.startTransaction();
-try {
-    await pendingTaskRepo.insert({
-        type: 'EXTERNAL_SYNC',
-        payload: data,
-        status: 'PENDING'
-    });
-    await qr.commitTransaction();
-} catch { /* ... */ }
+## 九、Code Review 清单
 
-// 异步定时任务扫描处理
-@Cron('*/5 * * * *')
-async processPendingTasks() {
-    const tasks = await pendingTaskRepo.find({ where: { status: 'PENDING' } });
-    for (const task of tasks) {
-        const result = await callExternal(task.payload);
-        // 更新本地业务表 + 标记任务完成
-    }
-}
-```
-
-## 五、排序与分页策略
-
-### 5.1 决策矩阵
-
-| 业务场景             | 排序位置           | 实现方案                                                | 内存安全保证                 |
-| :------------------- | :----------------- | :------------------------------------------------------ | :--------------------------- |
-| 前端列表/后台管理    | **数据库层**       | `ORDER BY ... LIMIT 20 OFFSET 0`                        | 数据库只返回 20 条           |
-| 深翻页（第 1000 页） | **数据库层**       | 游标分页：`WHERE id < lastId ORDER BY id DESC LIMIT 20` | 避免 OFFSET 全表扫描         |
-| 定时任务/全量导出    | **应用层（分批）** | `WHERE id > lastId LIMIT 1000`，每批内存排序            | 大排序拆小批量               |
-| 本地缓存/字典表      | **应用层（全量）** | 启动时 `find()` + `Array.sort()`                        | 开发者业务常识保证 < 5000 条 |
-
-### 5.2 游标分页模板
-
-```typescript
-async function exportAllData() {
-	let lastId = 0;
-	const CHUNK_SIZE = 1000;
-	let hasMore = true;
-
-	while (hasMore) {
-		const batch = await repo.find({
-			where: { id: MoreThan(lastId) },
-			order: { id: "ASC" },
-			take: CHUNK_SIZE,
-			select: ["id", "name", "createTime"],
-		});
-
-		if (batch.length === 0) {
-			hasMore = false;
-		} else {
-			// 内存排序仅针对本批次
-			const sorted = batch.sort((a, b) => a.createTime - b.createTime);
-			await processBatch(sorted);
-			lastId = batch[batch.length - 1].id;
-		}
-	}
-}
-```
-
-## 六、O/RM 选型工程建议（2026）
-
-| 维度               | TypeORM          | Prisma                    | MikroORM                       |
-| :----------------- | :--------------- | :------------------------ | :----------------------------- |
-| GitHub Open Issues | ~479             | ~2,474（积压严重）        | ~148（最少）                   |
-| 核心模式           | Data Mapper / AR | Schema-first, 生成 Client | **Data Mapper + Unit of Work** |
-| 长期维护风险       | 中等             | **高**（Issue 积压）      | **低**（维护活跃）             |
-| 工程推荐度         | ⭐⭐             | ⭐⭐                      | ⭐⭐⭐⭐⭐                     |
-
-**结论**：
-
--   **Prisma**：开发体验好，但 Rust 引擎是"黑盒"，版本升级风险高
--   **TypeORM**：功能全但技术债务重，Issue 长期未解决
--   **MikroORM**：学习曲线稍陡，但架构严谨、维护质量高，最契合"压力上移"工程理念
-
-## 七、红线清单（Code Review 必查）
-
-| #   | 红线                                    | 风险                 |
-| :-- | :-------------------------------------- | :------------------- |
-| 1   | 无 `where` 条件的 `.find()`             | 连接池/内存打爆      |
-| 2   | 循环内 `await repo.save()`              | N+1 写入，性能灾难   |
-| 3   | 循环内 `await repo.find()` 查关联       | N+1 查询，性能灾难   |
-| 4   | 多表写入无 `QueryRunner` 事务           | 数据不一致，孤儿数据 |
-| 5   | 事务内包含远程调用（axios）             | 连接池耗尽，系统雪崩 |
-| 6   | 声明式事务装饰器                        | 连接泄漏风险         |
-| 7   | 事务嵌套                                | 死锁风险             |
-| 8   | 内存组装用 `Array.find` 而非 `Map`      | O(n²)，CPU 爆满      |
-| 9   | `relations: [...]` 隐式 JOIN 且数据量大 | 数据库压力爆炸       |
-| 10  | 外键字段未加 `@Index()`                 | 关联查询全表扫描     |
-
-## 八、扩展性检验标准（自测三问）
-
-写完一段查询代码后，问自己：
-
-1. **这条 SQL 是否只走了主键或唯一索引？**
-
-    - ✅ 是 → 数据库安全
-    - ❌ 否 → 加索引或重构
-
-2. **返回的数据是否只取了必要字段，且数据量控制在百级以内？**
-
-    - ✅ 是 → 网络传输安全
-    - ❌ 否 → 加 `.select()` 或分块
-
-3. **如果并发量翻 10 倍，这台 Node 机器内存会爆吗？**
-    - ✅ 不会 → 通过
-    - ❌ 会 → 加入分块或流式逻辑
-
----
-
-_最后更新：2026-08-17_
+- [ ] 查询有 where、limit 或明确的小表例外。
+- [ ] API 查询只选择必要字段。
+- [ ] 没有循环查询和循环 flush。
+- [ ] 关联加载策略与关系基数匹配。
+- [ ] 关联字段索引覆盖实际查询且不重复。
+- [ ] 多表写入在同一事务中。
+- [ ] 事务内没有外部 IO。
+- [ ] 无外键关联的存在性和删除顺序由 Service 保证。
+- [ ] 先查后写的唯一性有数据库约束或并发锁。
+- [ ] development 同步和 migration 不管理同一个 schema。
+- [ ] production 不执行 SchemaGenerator。
+- [ ] migration、snapshot 和真实 PostgreSQL 测试一致。
+- [ ] 性能优化有执行计划或监控数据，不凭规则猜测。

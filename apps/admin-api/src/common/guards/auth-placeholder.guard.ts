@@ -5,7 +5,7 @@ import {
 	NotImplementedException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { AUTH_REQUIRED_KEY, PUBLIC_ROUTE_KEY } from "../decorators";
+import { AUTH_REQUIRED_KEY, PUBLIC_ROUTE_KEY } from "@/common/decorators";
 
 /**
  * 第一版只保留认证扩展点，不实现用户、JWT 或权限业务。

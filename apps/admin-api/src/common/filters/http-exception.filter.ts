@@ -6,7 +6,7 @@ import {
 	Logger,
 } from "@nestjs/common";
 import type { Response } from "express";
-import type { ApiResponse, RequestWithId } from "../types";
+import type { ApiResponse, RequestWithId } from "@/common/types";
 
 type ExceptionBody = string | Record<string, unknown>;
 

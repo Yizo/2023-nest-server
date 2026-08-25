@@ -4,7 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { utilities, type WinstonModuleOptions } from "nest-winston";
 import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
-import type { AdminApiConfig } from "../../config";
+import type { AdminApiConfig } from "@/config";
 
 /** 只保留指定级别，避免 info 文件同时收集 warn/error。 */
 function onlyLevel(level: string): winston.Logform.Format {

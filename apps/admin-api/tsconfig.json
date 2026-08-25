@@ -1,8 +1,12 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2022",
-    "moduleResolution": "node",
+		"module": "commonjs",
+		"target": "ES2022",
+		"moduleResolution": "node",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"]
+		},
     "ignoreDeprecations": "6.0",
     "declaration": true,
     "removeComments": false,

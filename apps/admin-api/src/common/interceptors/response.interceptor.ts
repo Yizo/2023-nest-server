@@ -5,7 +5,7 @@ import {
 	NestInterceptor,
 } from "@nestjs/common";
 import { map, type Observable } from "rxjs";
-import type { ApiResponse, RequestWithId } from "../types";
+import type { ApiResponse, RequestWithId } from "@/common/types";
 
 /** 将所有成功响应包装成统一的 API 外壳。 */
 @Injectable()

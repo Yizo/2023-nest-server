@@ -1,7 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient } from "redis";
-import type { AdminApiConfig } from "../../config";
+import type { AdminApiConfig } from "@/config";
 import { REDIS_CLIENT } from "./redis.constants";
 import { RedisService } from "./redis.service";
 

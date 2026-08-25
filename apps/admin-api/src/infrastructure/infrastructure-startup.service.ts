@@ -5,7 +5,7 @@ import {
 	type OnApplicationBootstrap,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { AdminApiConfig } from "../config";
+import type { AdminApiConfig } from "@/config";
 import { RedisService } from "./redis";
 
 /** 在 HTTP 监听前统一验证硬依赖，避免半就绪进程进入反向代理。 */
@@ -24,7 +24,7 @@ export class InfrastructureStartupService implements OnApplicationBootstrap {
 			await this.orm.connect();
 			const config = this.configService.getOrThrow<AdminApiConfig>("app");
 			if (config.database.synchronize) {
-				this.logger.warn("开发环境已启用数据库结构同步");
+				this.logger.warn("开发环境数据库结构同步已开启，可能创建、修改或删除数据库对象");
 				await this.orm.schema.update();
 			}
 			await Promise.all([
@@ -32,7 +32,7 @@ export class InfrastructureStartupService implements OnApplicationBootstrap {
 				this.redis.assertRuntimeReady(),
 			]);
 		} catch {
-			this.logger.error("基础设施启动检查失败");
+			this.logger.error("PostgreSQL 初始化或 Redis 启动检查失败");
 			throw new Error("PostgreSQL 或 Redis 未就绪");
 		}
 		this.logger.log("PostgreSQL 与 Redis 检查通过");

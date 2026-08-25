@@ -68,11 +68,8 @@ export function createConfiguration(raw: NodeJS.ProcessEnv = process.env): Admin
 		database: {
 			// production 为空时保留空字符串，让 MikroORM 在运行时报告错误。
 			url: raw.DATABASE_URL || "",
-			// production 强制关闭；其它环境可显式覆盖，development 默认开启。
-			synchronize: nodeEnv !== "production"
-				&& (raw.DATABASE_SYNCHRONIZE
-					? raw.DATABASE_SYNCHRONIZE === "true"
-					: nodeEnv === "development"),
+			// 未显式开启时不修改结构；production 即使误配为 true 也会强制关闭。
+			synchronize: nodeEnv !== "production" && raw.DATABASE_SYNCHRONIZE === "true",
 			debug: raw.DB_DEBUG === "true",
 		},
 		redis: {

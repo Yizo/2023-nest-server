@@ -1,8 +1,9 @@
 import { Migrator } from "@mikro-orm/migrations";
+import { ReflectMetadataProvider } from "@mikro-orm/decorators/legacy";
 import { defineConfig, PostgreSqlDriver, type Options } from "@mikro-orm/postgresql";
 import { Logger } from "@nestjs/common";
 import { join } from "node:path";
-import { createConfiguration, type AdminApiConfig } from "../../config";
+import { createConfiguration, type AdminApiConfig } from "@/config";
 
 const mikroOrmLogger = new Logger("MikroORM");
 
@@ -16,17 +17,22 @@ export function createMikroOrmOptions(config: AdminApiConfig, snapshot = false):
 	return defineConfig({
 		// PostgreSQL 驱动；clientUrl 来自环境变量 DATABASE_URL。
 		driver: PostgreSqlDriver,
+		metadataProvider: ReflectMetadataProvider,
 		clientUrl: config.database.url,
 		// 数据库 schema
 		schema: "public",
-		// 实体稍后以 class 引用显式注册；空数组时关闭“无实体”警告，避免脚手架阶段刷屏。
-		entities: [],
-		discovery: { warnWhenNoEntities: false },
+		// 开发和 CLI 发现 TypeScript 实体，编译后的应用和生产 migration 发现 JavaScript 实体。
+		baseDir: process.cwd(),
+		entities: ["dist/**/*.entity.js"],
+		entitiesTs: ["src/**/*.entity.ts"],
 		// 禁止在请求上下文外使用全局 EntityManager，强制走每请求 fork，避免并发 Identity Map 串扰。
 		allowGlobalContext: false,
-		// 普通连接不修改数据库；开发环境是否自动更新结构由 database.synchronize 控制。
-		ensureDatabase: false,
+		// 当同步开关开启时，允许 MikroORM 检查并创建目标数据库
+		ensureDatabase: config.database.synchronize,
+		// 关闭，避免连接时单独执行一次索引维护
 		ensureIndexes: false,
+		// 关系只供 ORM 查询和对象映射使用，任何环境都不得生成数据库物理外键。
+		schemaGenerator: { createForeignKeyConstraints: false },
 		// 默认关闭 SQL 日志；开发环境显式设置 DB_DEBUG=true 才打印。
 		debug: config.app.nodeEnv === "development" && config.database.debug,
 		colors: false,
@@ -59,6 +65,7 @@ export function createMikroOrmOptions(config: AdminApiConfig, snapshot = false):
 			// 禁止生成器在 down 里随意 DROP TABLE，避免误删数据。
 			dropTables: false,
 			snapshot,
+			snapshotName: ".snapshot-admin-api",
 			emit: "ts",
 		},
 	});
