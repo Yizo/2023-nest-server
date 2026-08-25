@@ -216,19 +216,7 @@
       ],
       "checks": [],
       "triggers": [],
-      "foreignKeys": {
-        "sys_dict_data_dict_type_id_foreign": {
-          "columnNames": [
-            "dict_type_id"
-          ],
-          "constraintName": "sys_dict_data_dict_type_id_foreign",
-          "localTableName": "public.sys_dict_data",
-          "referencedColumnNames": [
-            "id"
-          ],
-          "referencedTableName": "public.sys_dict_type"
-        }
-      },
+      "foreignKeys": {},
       "comment": "字典数据"
     },
     {

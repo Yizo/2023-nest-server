@@ -17,6 +17,7 @@ import { DictTypeEntity } from "./dict-type.entity";
 export class DictDataEntity extends SoftDeleteEntity {
 	@ManyToOne(() => DictTypeEntity, {
 		joinColumn: "dict_type_id",
+		createForeignKeyConstraint: false,
 		comment: "字典类型 ID",
 	})
 	dictType!: Rel<DictTypeEntity>;

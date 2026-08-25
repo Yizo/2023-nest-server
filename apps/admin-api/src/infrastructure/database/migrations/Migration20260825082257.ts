@@ -27,12 +27,10 @@ export class Migration20260825082257 extends Migration {
     this.addSql(`comment on column "sys_dict_data"."updated_at" is '更新时间';`);
     this.addSql(`comment on column "sys_dict_data"."value" is '字典值';`);
     this.addSql(`comment on table "sys_dict_data" is '字典数据';`);
-  }
+	  }
 
-  override down(): void | Promise<void> {
-    this.addSql(`alter table "sys_dict_data" drop constraint "sys_dict_data_dict_type_id_foreign";`);
-
-    this.addSql(`comment on column "sys_dict_data"."id" is null;`);
+	  override down(): void | Promise<void> {
+	    this.addSql(`comment on column "sys_dict_data"."id" is null;`);
     this.addSql(`comment on column "sys_dict_data"."created_at" is null;`);
     this.addSql(`comment on column "sys_dict_data"."updated_at" is null;`);
     this.addSql(`comment on column "sys_dict_data"."deleted_at" is null;`);

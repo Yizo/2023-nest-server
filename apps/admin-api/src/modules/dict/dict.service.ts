@@ -4,41 +4,15 @@ import { EntityManager } from "@mikro-orm/postgresql";
 import {
 	CreateDictDataDto,
 	CreateDictTypeDto,
+	DictDataResult,
+	DictPageResult,
+	DictTypeResult,
 	QueryDictDataDto,
 	QueryDictTypeDto,
 	UpdateDictDataDto,
 	UpdateDictTypeDto,
 } from "./dto";
 import { DictDataEntity, DictTypeEntity } from "./entities";
-
-export interface DictTypeResult {
-	id: number;
-	dictName: string;
-	dictType: string;
-	status: 0 | 1;
-	remark: string | null;
-	createdAt: Date;
-	updatedAt: Date;
-}
-
-export interface DictDataResult {
-	id: number;
-	dictType: string;
-	label: string;
-	value: string;
-	sort: number;
-	status: 0 | 1;
-	remark: string | null;
-	createdAt: Date;
-	updatedAt: Date;
-}
-
-export interface DictPageResult<T> {
-	items: T[];
-	total: number;
-	page: number;
-	pageSize: number;
-}
 
 type DictTypeView = Pick<
 	DictTypeEntity,
@@ -53,6 +27,7 @@ type DictDataView = Pick<
 export class DictService {
 	constructor(private readonly em: EntityManager) {}
 
+	/** 创建字典类型。先查后插，flush 时再用唯一约束兜并发重复。编码创建后不可改。 */
 	async createType(dto: CreateDictTypeDto): Promise<DictTypeResult> {
 		if (await this.em.findOne(
 			DictTypeEntity,
@@ -79,6 +54,7 @@ export class DictService {
 		return this.toTypeResult(entity);
 	}
 
+	/** 分页查询未删除的字典类型，按名称/编码模糊搜，按创建时间倒序。 */
 	async findTypes(query: QueryDictTypeDto): Promise<DictPageResult<DictTypeResult>> {
 		const where: FilterQuery<DictTypeEntity> = { deletedAt: null };
 		if (query.dictName) where.dictName = { $ilike: `%${query.dictName}%` };
@@ -99,10 +75,12 @@ export class DictService {
 		};
 	}
 
+	/** 按主键查单条未删除的字典类型，不存在则 404。 */
 	async findType(id: number): Promise<DictTypeResult> {
 		return this.toTypeResult(await this.findTypeEntity(this.em, id));
 	}
 
+	/** 更新类型名称、状态、备注。不改 dictType 编码，只 flush 脏字段。 */
 	async updateType(id: number, dto: UpdateDictTypeDto): Promise<DictTypeResult> {
 		const entity = await this.findTypeEntity(this.em, id);
 		if (dto.dictName !== undefined) entity.dictName = dto.dictName;
@@ -112,9 +90,13 @@ export class DictService {
 		return this.toTypeResult(entity);
 	}
 
+	/**
+	 * 软删字典类型，并批量软删其下仍有效的字典数据。
+	 * 事务内对类型行 FOR UPDATE，与 createData 抢同一把锁，避免删的同时再插入。
+	 */
 	async removeType(id: number): Promise<DictTypeResult> {
 		return this.em.transactional(async (em) => {
-			const type = await this.findTypeEntity(em, id);
+			const type = await this.findTypeEntity(em, id, true);
 			const now = new Date();
 			await em.nativeUpdate(
 				DictDataEntity,
@@ -128,6 +110,10 @@ export class DictService {
 		});
 	}
 
+	/**
+	 * 在指定类型下创建字典数据。关系字段赋类型实体，flush 时写入 dict_type_id。
+	 * 锁父类型后再校验 value，唯一约束兜并发撞值。
+	 */
 	async createData(dto: CreateDictDataDto): Promise<DictDataResult> {
 		return this.em.transactional(async (em) => {
 			const type = await this.findTypeByCode(em, dto.dictType, true);
@@ -152,6 +138,7 @@ export class DictService {
 		});
 	}
 
+	/** 按类型编码分页查未删除的字典数据，按 sort、id 升序。 */
 	async findDataList(query: QueryDictDataDto): Promise<DictPageResult<DictDataResult>> {
 		const type = await this.findTypeByCode(this.em, query.dictType);
 		const where: FilterQuery<DictDataEntity> = { dictType: type, deletedAt: null };
@@ -173,11 +160,13 @@ export class DictService {
 		};
 	}
 
+	/** 按主键查单条未删除的字典数据；所属类型已删则视为不存在。 */
 	async findData(id: number): Promise<DictDataResult> {
 		const data = await this.findDataEntity(this.em, id);
 		return this.toDataResult(data, data.dictType.dictType);
 	}
 
+	/** 更新字典数据。改 value 时锁所属类型并排除自身做占用检查；不可改所属类型。 */
 	async updateData(id: number, dto: UpdateDictDataDto): Promise<DictDataResult> {
 		return this.em.transactional(async (em) => {
 			const data = await this.findDataEntity(em, id);
@@ -202,27 +191,35 @@ export class DictService {
 		});
 	}
 
+	/** 软删单条字典数据，不处理所属类型。 */
 	async removeData(id: number): Promise<DictDataResult> {
-		return this.em.transactional(async (em) => {
-			const data = await this.findDataEntity(em, id);
-			const now = new Date();
-			data.deletedAt = now;
-			data.updatedAt = now;
-			await em.flush();
-			return this.toDataResult(data, data.dictType.dictType);
-		});
+		const data = await this.findDataEntity(this.em, id);
+		const now = new Date();
+		data.deletedAt = now;
+		data.updatedAt = now;
+		await this.em.flush();
+		return this.toDataResult(data, data.dictType.dictType);
 	}
 
-	private async findTypeEntity(em: EntityManager, id: number): Promise<DictTypeEntity> {
+	/** 按 id 取未删除的类型；lockForWrite 时 SELECT FOR UPDATE，须在事务内调用。 */
+	private async findTypeEntity(
+		em: EntityManager,
+		id: number,
+		lockForWrite = false,
+	): Promise<DictTypeEntity> {
 		const entity = await em.findOne(
 			DictTypeEntity,
 			{ id, deletedAt: null },
-			{ fields: ["id", "dictName", "dictType", "status", "remark", "createdAt", "updatedAt", "deletedAt"] },
+			{
+				fields: ["id", "dictName", "dictType", "status", "remark", "createdAt", "updatedAt", "deletedAt"],
+				...(lockForWrite ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {}),
+			},
 		);
 		if (!entity) throw new NotFoundException("字典类型不存在");
 		return entity;
 	}
 
+	/** 按类型编码取未删除的类型；创建数据时 lockForWrite 与删除类型互斥。 */
 	private async findTypeByCode(
 		em: EntityManager,
 		dictType: string,
@@ -240,6 +237,7 @@ export class DictService {
 		return entity as DictTypeEntity;
 	}
 
+	/** 按 id 取未删除的数据，JOIN 加载所属类型；类型已软删则当数据不存在。 */
 	private async findDataEntity(em: EntityManager, dataId: number): Promise<DictDataEntity> {
 		const entity = await em.findOne(
 			DictDataEntity,
@@ -269,6 +267,7 @@ export class DictService {
 		return entity as DictDataEntity;
 	}
 
+	/** 断言该类型下 value 未被有效数据占用。更新时传 excludedDataId 排除自身。 */
 	private async assertDataValueAvailable(
 		em: EntityManager,
 		type: DictTypeEntity,
@@ -281,6 +280,7 @@ export class DictService {
 		if (existing) throw new ConflictException("同一字典类型下的字典值已存在");
 	}
 
+	/** 类型实体转接口返回，不含 deletedAt。 */
 	private toTypeResult(entity: DictTypeView): DictTypeResult {
 		return {
 			id: entity.id,
@@ -293,6 +293,7 @@ export class DictService {
 		};
 	}
 
+	/** 数据实体转接口返回；dictType 用编码字符串，不暴露类型主键对象。 */
 	private toDataResult(entity: DictDataView, dictType: string): DictDataResult {
 		return {
 			id: entity.id,

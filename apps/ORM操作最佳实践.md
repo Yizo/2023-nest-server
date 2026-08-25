@@ -227,11 +227,11 @@ TypeORM 对应 `QueryRunner`；不要把 TypeORM API 当成 MikroORM 的强制�
 
 全部步骤在同一事务中完成。
 
-### 4.4 跨表唯一性需要锁
+### 4.4 唯一约束与父记录锁分工
 
-如果唯一键分散在两张表，普通 unique index 无法约束。仅执行“先查后写”存在并发竞态。
+唯一键位于同一张表时，优先使用数据库 unique index，并在 Service 中做写前检查和异常转换。仅依赖“先查后写”仍有并发竞态，数据库约束负责最终兜底。
 
-推荐锁定稳定的父记录：
+项目不使用物理外键时，创建子记录和删除父记录必须锁定同一父记录，避免父记录删除过程中插入新的有效子数据：
 
 ```typescript
 await em.findOne(
@@ -241,7 +241,7 @@ await em.findOne(
 );
 ```
 
-固定锁顺序，缩短事务时间。相同父记录写入串行，不同父记录保持并行。
+创建和删除必须遵守相同锁顺序并缩短事务时间。相同父记录的生命周期写入串行，不同父记录保持并行；不要为了已有 unique index 再额外加锁。
 
 ### 4.5 嵌套事务和声明式事务
 
@@ -302,14 +302,12 @@ production 永远关闭同步：
 ```text
 安装依赖
   ↓
-只读 migration status
-  ↓
 migration up
   ↓
 启动应用
 ```
 
-Migration 与 snapshot 同时版本控制。应用启动只读检查全部实体表和 migration，不执行 DDL。
+Migration 与 snapshot 同时版本控制。应用启动只检查 PostgreSQL 和 Redis 是否可用，不生成或执行 migration。
 
 ## 八、性能验收
 

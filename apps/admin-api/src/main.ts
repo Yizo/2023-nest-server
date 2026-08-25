@@ -4,10 +4,24 @@ import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
+import { networkInterfaces } from "node:os";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 import { AppModule } from "./app.module";
 import type { AdminApiConfig } from "./config";
 import { createValidationPipe } from "./common/pipes";
+
+/** 监听 0.0.0.0 时列出本机可访问的 IPv4 源，便于打印真实文档地址。 */
+function advertisedHttpOrigins(port: number): string[] {
+	const hosts = new Set<string>(["127.0.0.1"]);
+	for (const addresses of Object.values(networkInterfaces())) {
+		for (const address of addresses ?? []) {
+			if (address.family !== "IPv4") continue;
+			if (address.internal) continue;
+			hosts.add(address.address);
+		}
+	}
+	return [...hosts].map((host) => `http://${host}:${port}`);
+}
 
 /** 应用启动后的统一 HTTP 配置。 */
 export function configureHttpApplication(
@@ -22,7 +36,15 @@ export function configureHttpApplication(
 	// 从而关闭 HTTP、Redis 和 MikroORM 连接并释放监听端口。
 	app.enableShutdownHooks(["SIGINT", "SIGTERM", "SIGHUP"]);
 	app.setGlobalPrefix("api/v1");
-	app.use(helmet());
+	const isDevelopment = config.app.nodeEnv === "development";
+	app.use(
+		helmet({
+			// HTTP 下用 IP（非 localhost）访问时，浏览器会忽略 COOP 并打这条警告。
+			crossOriginOpenerPolicy: isDevelopment ? false : { policy: "same-origin" },
+			// 开发环境关闭默认 CSP，避免 Swagger UI 的内联脚本被拦截。
+			contentSecurityPolicy: isDevelopment ? false : undefined,
+		}),
+	);
 	app.enableCors({
 		origin: config.cors.origins.includes("*") ? true : config.cors.origins,
 		credentials: config.cors.credentials,
@@ -62,6 +84,20 @@ async function bootstrap(): Promise<void> {
 		new Logger("Bootstrap").log(
 			`${config.app.name}@${config.app.version} listening on 0.0.0.0:${config.app.port}; environment=${config.app.nodeEnv}`,
 		);
+		console.group("admin-api启动成功");
+		console.log("config", config);
+		if (config.swaggerEnabled) {
+			const origins = advertisedHttpOrigins(config.app.port);
+			console.log(
+				"swagger文档地址",
+				origins.map((origin) => `${origin}/api/v1/docs`),
+			);
+			console.log(
+				"swagger文档JSON地址",
+				origins.map((origin) => `${origin}/api/v1/docs-json`),
+			);
+		}
+		console.groupEnd();
 	} catch (error) {
 		if (app) await app.close().catch(() => undefined);
 		throw error;

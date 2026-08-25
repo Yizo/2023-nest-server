@@ -47,7 +47,7 @@ export class DictController {
 	@Post("types/:id/remove")
 	@ApiOperation({
 		summary: "软删除字典类型",
-		description: "同时软删除该类型下的字典数据和关联记录，不可恢复。",
+		description: "同时软删除该类型下的字典数据，不可恢复。",
 	})
 	@ApiParam({ name: "id", description: "字典类型 ID", example: 1 })
 	removeType(@Param("id", PositiveIntPipe) id: number) {
@@ -83,7 +83,7 @@ export class DictController {
 	}
 
 	@Post("data/:id/remove")
-	@ApiOperation({ summary: "软删除字典数据", description: "同时软删除类型与数据的关联，不可恢复。" })
+	@ApiOperation({ summary: "软删除字典数据", description: "软删除指定字典数据，不可恢复。" })
 	@ApiParam({ name: "id", description: "字典数据 ID", example: 1 })
 	removeData(@Param("id", PositiveIntPipe) id: number) {
 		return this.service.removeData(id);

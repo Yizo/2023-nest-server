@@ -20,7 +20,13 @@ export class Migration20260825000100 extends Migration {
 			where relation."dict_data_id" = data."id"
 				and data."dict_type_id" is null;
 
-			delete from "sys_dict_data" where "dict_type_id" is null;
+			do $$
+			begin
+				if exists (select 1 from "sys_dict_data" where "dict_type_id" is null) then
+					raise exception '存在无法确定字典类型的 sys_dict_data，请先修复关联数据';
+				end if;
+			end
+			$$;
 
 			alter table "sys_dict_data"
 				alter column "dict_type_id" set not null;
