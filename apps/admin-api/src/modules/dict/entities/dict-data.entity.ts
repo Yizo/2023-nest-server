@@ -1,9 +1,8 @@
 import type { Opt } from "@mikro-orm/core";
-import { Check, Entity, Property } from "@mikro-orm/decorators/legacy";
+import { Entity, Property } from "@mikro-orm/decorators/legacy";
 import { SoftDeleteEntity } from "@/common/entities/base.entity";
 
 @Entity({ tableName: "sys_dict_data", comment: "字典数据" })
-@Check({ name: "chk_sys_dict_data_status", expression: '"status" in (0, 1)' })
 export class DictDataEntity extends SoftDeleteEntity {
 	@Property({ type: "string", length: 100, comment: "字典标签" })
 	label!: string;

@@ -1,9 +1,8 @@
 import type { Opt } from "@mikro-orm/core";
-import { Check, Entity, Property, Unique } from "@mikro-orm/decorators/legacy";
+import { Entity, Property, Unique } from "@mikro-orm/decorators/legacy";
 import { SoftDeleteEntity } from "@/common/entities/base.entity";
 
 @Entity({ tableName: "sys_dict_type", comment: "字典类型" })
-@Check({ name: "chk_sys_dict_type_status", expression: '"status" in (0, 1)' })
 @Unique({
 	name: "uq_sys_dict_type_code_active",
 	properties: ["dictType"],

@@ -19,14 +19,12 @@ import { DictTypeEntity } from "./dict-type.entity";
 export class DictTypeDataEntity extends SoftDeleteEntity {
 	@ManyToOne(() => DictTypeEntity, {
 		joinColumn: "dict_type_id",
-		createForeignKeyConstraint: false,
 		comment: "字典类型 ID",
 	})
 	dictType!: Rel<DictTypeEntity>;
 
 	@ManyToOne(() => DictDataEntity, {
 		joinColumn: "dict_data_id",
-		createForeignKeyConstraint: false,
 		comment: "字典数据 ID",
 	})
 	dictData!: Rel<DictDataEntity>;
