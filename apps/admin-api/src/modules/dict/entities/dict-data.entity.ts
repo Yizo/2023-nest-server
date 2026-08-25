@@ -1,9 +1,26 @@
-import type { Opt } from "@mikro-orm/core";
-import { Entity, Property } from "@mikro-orm/decorators/legacy";
+import type { Opt, Rel } from "@mikro-orm/core";
+import { Entity, Index, ManyToOne, Property, Unique } from "@mikro-orm/decorators/legacy";
 import { SoftDeleteEntity } from "@/common/entities/base.entity";
+import { DictTypeEntity } from "./dict-type.entity";
 
 @Entity({ tableName: "sys_dict_data", comment: "字典数据" })
+@Unique({
+	name: "uq_sys_dict_data_type_value_active",
+	properties: ["dictType", "value"],
+	where: { deletedAt: null },
+})
+@Index({
+	name: "idx_sys_dict_data_type_active",
+	properties: ["dictType"],
+	where: { deletedAt: null },
+})
 export class DictDataEntity extends SoftDeleteEntity {
+	@ManyToOne(() => DictTypeEntity, {
+		joinColumn: "dict_type_id",
+		comment: "字典类型 ID",
+	})
+	dictType!: Rel<DictTypeEntity>;
+
 	@Property({ type: "string", length: 100, comment: "字典标签" })
 	label!: string;
 

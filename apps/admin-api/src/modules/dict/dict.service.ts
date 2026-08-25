@@ -1,10 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import {
-	type FilterQuery,
-	LoadStrategy,
-	LockMode,
-	UniqueConstraintViolationException,
-} from "@mikro-orm/core";
+import { type FilterQuery, LoadStrategy, LockMode, UniqueConstraintViolationException } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import {
 	CreateDictDataDto,
@@ -14,7 +9,7 @@ import {
 	UpdateDictDataDto,
 	UpdateDictTypeDto,
 } from "./dto";
-import { DictDataEntity, DictTypeDataEntity, DictTypeEntity } from "./entities";
+import { DictDataEntity, DictTypeEntity } from "./entities";
 
 export interface DictTypeResult {
 	id: number;
@@ -120,28 +115,12 @@ export class DictService {
 	async removeType(id: number): Promise<DictTypeResult> {
 		return this.em.transactional(async (em) => {
 			const type = await this.findTypeEntity(em, id);
-			const relations = await em.find(
-				DictTypeDataEntity,
-				{ dictType: type, dictData: { deletedAt: null }, deletedAt: null },
-				{ fields: ["id", "dictData.id"] },
-			);
 			const now = new Date();
-			const relationIds = relations.map((relation) => relation.id);
-			const dataIds = relations.map((relation) => relation.dictData.id);
-
-			// 没有数据库外键时，三张表的软删除必须在同一事务中完成，避免留下有效孤立关联。
-			if (relationIds.length > 0) {
-				await em.nativeUpdate(
-					DictTypeDataEntity,
-					{ id: { $in: relationIds }, deletedAt: null },
-					{ deletedAt: now, updatedAt: now },
-				);
-				await em.nativeUpdate(
-					DictDataEntity,
-					{ id: { $in: dataIds }, deletedAt: null },
-					{ deletedAt: now, updatedAt: now },
-				);
-			}
+			await em.nativeUpdate(
+				DictDataEntity,
+				{ dictType: type, deletedAt: null },
+				{ deletedAt: now, updatedAt: now },
+			);
 			type.deletedAt = now;
 			type.updatedAt = now;
 			await em.flush();
@@ -154,50 +133,40 @@ export class DictService {
 			const type = await this.findTypeByCode(em, dto.dictType, true);
 			await this.assertDataValueAvailable(em, type, dto.value);
 			const data = em.create(DictDataEntity, {
+				dictType: type,
 				label: dto.label,
 				value: dto.value,
 				sort: dto.sort ?? 0,
 				status: dto.status ?? 1,
 				remark: dto.remark ?? null,
 			});
-			const relation = em.create(DictTypeDataEntity, { dictType: type, dictData: data });
-			em.persist([data, relation]);
-			await em.flush();
+			try {
+				await em.persist(data).flush();
+			} catch (error) {
+				if (error instanceof UniqueConstraintViolationException) {
+					throw new ConflictException("同一字典类型下的字典值已存在");
+				}
+				throw error;
+			}
 			return this.toDataResult(data, type.dictType);
 		});
 	}
 
 	async findDataList(query: QueryDictDataDto): Promise<DictPageResult<DictDataResult>> {
 		const type = await this.findTypeByCode(this.em, query.dictType);
-		const dataWhere: FilterQuery<DictDataEntity> = { deletedAt: null };
-		if (query.label) dataWhere.label = { $ilike: `%${query.label}%` };
-		if (query.value) dataWhere.value = { $ilike: `%${query.value}%` };
-		if (query.status !== undefined) dataWhere.status = query.status;
+		const where: FilterQuery<DictDataEntity> = { dictType: type, deletedAt: null };
+		if (query.label) where.label = { $ilike: `%${query.label}%` };
+		if (query.value) where.value = { $ilike: `%${query.value}%` };
+		if (query.status !== undefined) where.status = query.status;
 
-		const [relations, total] = await this.em.findAndCount(
-			DictTypeDataEntity,
-			{ dictType: type, dictData: dataWhere, deletedAt: null },
-			{
-				populate: ["dictData"],
-				strategy: LoadStrategy.JOINED,
-				fields: [
-					"id",
-					"dictData.id",
-					"dictData.label",
-					"dictData.value",
-					"dictData.sort",
-					"dictData.status",
-					"dictData.remark",
-					"dictData.createdAt",
-					"dictData.updatedAt",
-				],
-				limit: query.pageSize,
-				offset: (query.page - 1) * query.pageSize,
-				orderBy: { dictData: { sort: "asc", id: "asc" } },
-			},
-		);
+		const [entities, total] = await this.em.findAndCount(DictDataEntity, where, {
+			fields: ["id", "label", "value", "sort", "status", "remark", "createdAt", "updatedAt"],
+			limit: query.pageSize,
+			offset: (query.page - 1) * query.pageSize,
+			orderBy: { sort: "asc", id: "asc" },
+		});
 		return {
-			items: relations.map((relation) => this.toDataResult(relation.dictData, type.dictType)),
+			items: entities.map((entity) => this.toDataResult(entity, type.dictType)),
 			total,
 			page: query.page,
 			pageSize: query.pageSize,
@@ -205,38 +174,42 @@ export class DictService {
 	}
 
 	async findData(id: number): Promise<DictDataResult> {
-		const relation = await this.findDataRelation(this.em, id);
-		return this.toDataResult(relation.dictData, relation.dictType.dictType);
+		const data = await this.findDataEntity(this.em, id);
+		return this.toDataResult(data, data.dictType.dictType);
 	}
 
 	async updateData(id: number, dto: UpdateDictDataDto): Promise<DictDataResult> {
 		return this.em.transactional(async (em) => {
-			const relation = await this.findDataRelation(em, id);
-			const data = relation.dictData;
+			const data = await this.findDataEntity(em, id);
 			if (dto.value !== undefined && dto.value !== data.value) {
-				await em.lock(relation.dictType, LockMode.PESSIMISTIC_WRITE);
-				await this.assertDataValueAvailable(em, relation.dictType, dto.value, data.id);
+				await em.lock(data.dictType, LockMode.PESSIMISTIC_WRITE);
+				await this.assertDataValueAvailable(em, data.dictType, dto.value, data.id);
 				data.value = dto.value;
 			}
 			if (dto.label !== undefined) data.label = dto.label;
 			if (dto.sort !== undefined) data.sort = dto.sort;
 			if (dto.status !== undefined) data.status = dto.status;
 			if (dto.remark !== undefined) data.remark = dto.remark;
-			await em.flush();
-			return this.toDataResult(data, relation.dictType.dictType);
+			try {
+				await em.flush();
+			} catch (error) {
+				if (error instanceof UniqueConstraintViolationException) {
+					throw new ConflictException("同一字典类型下的字典值已存在");
+				}
+				throw error;
+			}
+			return this.toDataResult(data, data.dictType.dictType);
 		});
 	}
 
 	async removeData(id: number): Promise<DictDataResult> {
 		return this.em.transactional(async (em) => {
-			const relation = await this.findDataRelation(em, id);
+			const data = await this.findDataEntity(em, id);
 			const now = new Date();
-			relation.deletedAt = now;
-			relation.updatedAt = now;
-			relation.dictData.deletedAt = now;
-			relation.dictData.updatedAt = now;
+			data.deletedAt = now;
+			data.updatedAt = now;
 			await em.flush();
-			return this.toDataResult(relation.dictData, relation.dictType.dictType);
+			return this.toDataResult(data, data.dictType.dictType);
 		});
 	}
 
@@ -267,56 +240,44 @@ export class DictService {
 		return entity as DictTypeEntity;
 	}
 
-	private async findDataRelation(em: EntityManager, dataId: number): Promise<DictTypeDataEntity> {
-		const relation = await em.findOne(
-			DictTypeDataEntity,
+	private async findDataEntity(em: EntityManager, dataId: number): Promise<DictDataEntity> {
+		const entity = await em.findOne(
+			DictDataEntity,
 			{
-				dictType: { deletedAt: null },
-				dictData: { id: dataId, deletedAt: null },
+				id: dataId,
 				deletedAt: null,
+				dictType: { deletedAt: null },
 			},
 			{
-				populate: ["dictType", "dictData"],
+				populate: ["dictType"],
 				strategy: LoadStrategy.JOINED,
 				fields: [
 					"id",
+					"label",
+					"value",
+					"sort",
+					"status",
+					"remark",
+					"createdAt",
+					"updatedAt",
 					"dictType.id",
 					"dictType.dictType",
-					"dictData.id",
-					"dictData.label",
-					"dictData.value",
-					"dictData.sort",
-					"dictData.status",
-					"dictData.remark",
-					"dictData.createdAt",
-					"dictData.updatedAt",
 				],
 			},
 		);
-		if (!relation) throw new NotFoundException("字典数据不存在");
-		return relation as DictTypeDataEntity;
+		if (!entity) throw new NotFoundException("字典数据不存在");
+		return entity as DictDataEntity;
 	}
 
-	/**
-	 * 类型 ID 与 value 分处两张表，普通唯一索引无法跨表约束，因此在写入边界集中校验。
-	 */
 	private async assertDataValueAvailable(
 		em: EntityManager,
 		type: DictTypeEntity,
 		value: string,
 		excludedDataId?: number,
 	): Promise<void> {
-		const dataWhere: FilterQuery<DictDataEntity> = { value, deletedAt: null };
-		if (excludedDataId !== undefined) dataWhere.id = { $ne: excludedDataId };
-		const existing = await em.findOne(
-			DictTypeDataEntity,
-			{
-				dictType: type,
-				dictData: dataWhere,
-				deletedAt: null,
-			},
-			{ fields: ["id"] },
-		);
+		const where: FilterQuery<DictDataEntity> = { dictType: type, value, deletedAt: null };
+		if (excludedDataId !== undefined) where.id = { $ne: excludedDataId };
+		const existing = await em.findOne(DictDataEntity, where, { fields: ["id"] });
 		if (existing) throw new ConflictException("同一字典类型下的字典值已存在");
 	}
 
