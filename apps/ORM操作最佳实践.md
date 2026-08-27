@@ -9,16 +9,34 @@
 
 ## 一、项目数据库政策
 
-### 1.1 不创建物理外键
+### 1.1 MikroORM v7 实体定义
+
+admin-api 统一使用 `defineEntity + class + setClass()`，避免同时维护属性声明与 ORM 装饰器元数据：
+
+```typescript
+const UserSchema = defineEntity({
+	name: "UserEntity",
+	properties: {
+		id: p.integer().primary().autoincrement(),
+		name: p.string().length(100),
+	},
+});
+
+export class UserEntity extends UserSchema.class {}
+
+UserSchema.setClass(UserEntity);
+```
+
+不在同一应用中混用 legacy decorators、ES decorators 和 `defineEntity`。Nest Controller、DTO 和依赖注入仍使用 Nest 装饰器，它们不属于 ORM 实体定义。
+
+### 1.2 不创建物理外键
 
 admin-api 保留 ORM 关系，但 PostgreSQL 不创建物理外键：
 
 ```typescript
-@ManyToOne(() => UserEntity, {
-	createForeignKeyConstraint: false,
-})
-@Index()
-user!: Rel<UserEntity>;
+user: () => p.manyToOne(UserEntity)
+	.joinColumn("user_id")
+	.createForeignKeyConstraint(false),
 ```
 
 ORM 配置再提供全局保护：
@@ -37,7 +55,7 @@ schemaGenerator: {
 - 跨表唯一性必须使用锁、冗余键或其它并发控制。
 - 需要定期检查孤立数据。
 
-### 1.2 关联索引按查询模式设计
+### 1.3 关联索引按查询模式设计
 
 关联列通常需要索引，但不能机械地为每列重复创建索引：
 

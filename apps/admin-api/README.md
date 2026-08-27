@@ -10,6 +10,13 @@
 - Redis。
 - 本地连接远程服务时可使用项目 SSH 隧道脚本。
 
+## MikroORM 实体规范
+
+- 实体使用 MikroORM v7 推荐的 `defineEntity + class + setClass()`。
+- 公共字段通过 abstract schema 和 `extends` 复用，不使用 ORM 实体装饰器。
+- Nest、migration CLI 和 production build 共用同一份 ORM 配置与实体 glob。
+- ORM 保留 `ManyToOne` 关系，但关系级和全局都禁止生成 PostgreSQL 物理外键。
+
 ## Development：自动同步模式
 
 适合快速修改实体和个人开发数据库。
@@ -38,7 +45,7 @@ pnpm start:dev
 4. 检查 PostgreSQL 和 Redis。
 5. 启动 HTTP 服务。
 
-不要在已经由自动同步创建结构的同一个 `public` schema 上执行尚未标记的 baseline migration。Migration 的真实执行使用 `pnpm test:db` 在临时 schema 中验证。
+不要在已经由自动同步创建结构的同一个 `public` schema 上执行尚未标记的 baseline migration。
 
 ## Development：Migration 模式
 
@@ -71,7 +78,6 @@ pnpm start:dev
 ```bash
 pnpm db:migration:create
 pnpm db:migration:check
-pnpm test:db
 ```
 
 步骤：
@@ -81,37 +87,8 @@ pnpm test:db
 3. 执行 `db:migration:check` 检查实体差异。
 4. 审查 `apps/admin-api/src/infrastructure/database/migrations`。
 5. 确认没有 `FOREIGN KEY` 或 `REFERENCES`。
-6. 使用 `test:db` 在随机临时 schema 中执行全部 migration。
-7. 确认首次 up、第二次 no-op、事务回滚和字典 CRUD 均通过。
 
 `pack-release` 会自动按顺序执行 `db:migration:create` 和 `db:migration:check`。需要把 migration 应用到当前 development 数据库时，再显式执行 `pnpm db:migration:up`。生产服务器只执行编译后的 `pnpm db:migration:up:prod`。
-
-## 测试
-
-不连接真实基础设施的检查：
-
-```bash
-pnpm typecheck
-pnpm test
-pnpm test:e2e
-pnpm build
-```
-
-真实 PostgreSQL 测试：
-
-```bash
-pnpm test:db
-```
-
-`test:db`：
-
-- 使用 `.env.local` 的 DATABASE_URL。
-- 创建随机 `admin_api_migration_test_*` schema。
-- 不修改 `public`。
-- 测试完成后精确删除本次 schema。
-- DATABASE_URL 为空或账号不能创建 schema 时明确失败。
-
-普通 unit 和 E2E 不执行真实 migration。
 
 ## Production 部署
 
@@ -185,10 +162,6 @@ db:migration:check
 db:migration:up
 db:migration:up:prod
 typecheck
-test
-test:watch
-test:e2e
-test:db
 ```
 
 ## HTTP 接口

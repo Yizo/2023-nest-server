@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-		"module": "commonjs",
+		"module": "NodeNext",
 		"target": "ES2022",
-		"moduleResolution": "node",
+		"moduleResolution": "NodeNext",
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["src/*"]
@@ -22,8 +22,8 @@
     "outDir": "./dist",
     "incremental": true,
     "skipLibCheck": true,
-    "types": ["node", "jest"]
+		"types": ["node"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

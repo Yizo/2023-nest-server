@@ -1,5 +1,10 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { type FilterQuery, LoadStrategy, LockMode, UniqueConstraintViolationException } from "@mikro-orm/core";
+import {
+	type FilterQuery,
+	LoadStrategy,
+	LockMode,
+	UniqueConstraintViolationException,
+} from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import {
 	CreateDictDataDto,
@@ -29,11 +34,13 @@ export class DictService {
 
 	/** 创建字典类型。先查后插，flush 时再用唯一约束兜并发重复。编码创建后不可改。 */
 	async createType(dto: CreateDictTypeDto): Promise<DictTypeResult> {
-		if (await this.em.findOne(
-			DictTypeEntity,
-			{ dictType: dto.dictType, deletedAt: null },
-			{ fields: ["id"] },
-		)) {
+		if (
+			await this.em.findOne(
+				DictTypeEntity,
+				{ dictType: dto.dictType, deletedAt: null },
+				{ fields: ["id"] },
+			)
+		) {
 			throw new ConflictException("字典类型已存在");
 		}
 
@@ -211,7 +218,16 @@ export class DictService {
 			DictTypeEntity,
 			{ id, deletedAt: null },
 			{
-				fields: ["id", "dictName", "dictType", "status", "remark", "createdAt", "updatedAt", "deletedAt"],
+				fields: [
+					"id",
+					"dictName",
+					"dictType",
+					"status",
+					"remark",
+					"createdAt",
+					"updatedAt",
+					"deletedAt",
+				],
 				...(lockForWrite ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {}),
 			},
 		);
@@ -287,7 +303,7 @@ export class DictService {
 			dictName: entity.dictName,
 			dictType: entity.dictType,
 			status: entity.status,
-			remark: entity.remark,
+			remark: entity.remark ?? null,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 		};
@@ -302,7 +318,7 @@ export class DictService {
 			value: entity.value,
 			sort: entity.sort,
 			status: entity.status,
-			remark: entity.remark,
+			remark: entity.remark ?? null,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 		};

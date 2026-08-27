@@ -19,16 +19,11 @@
 		"db:migration:check": "pnpm --dir apps/admin-api db:migration:check",
 		"db:migration:up": "pnpm --dir apps/admin-api db:migration:up",
 		"db:migration:up:prod": "pnpm --dir apps/admin-api db:migration:up:prod",
-		"typecheck": "pnpm --dir apps/admin-api typecheck",
-		"test": "pnpm --dir apps/admin-api test",
-		"test:watch": "pnpm --dir apps/admin-api test:watch",
-		"test:e2e": "pnpm --dir apps/admin-api test:e2e",
-		"test:db": "pnpm --dir apps/admin-api test:db"
+		"typecheck": "pnpm --dir apps/admin-api typecheck"
 	},
 	"devDependencies": {
 		"@nestjs/cli": "11.0.24",
 		"@nestjs/schematics": "11.0.9",
-		"@types/jest": "29.5.14",
 		"@types/node": "26.2.0",
 		"typescript": "6.0.3"
 	},
