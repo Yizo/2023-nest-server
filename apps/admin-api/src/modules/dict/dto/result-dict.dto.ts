@@ -51,17 +51,3 @@ export class DictDataResult {
 	@ApiProperty({ description: "更新时间" })
 	updatedAt!: Date;
 }
-
-export class DictPageResult<T> {
-	@ApiProperty({ description: "当前页数据" })
-	items!: T[];
-
-	@ApiProperty({ description: "总条数" })
-	total!: number;
-
-	@ApiProperty({ description: "页码" })
-	page!: number;
-
-	@ApiProperty({ description: "每页数量" })
-	pageSize!: number;
-}
