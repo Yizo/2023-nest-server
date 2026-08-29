@@ -13,6 +13,8 @@ import { InfrastructureStartupService } from "./infrastructure/infrastructure-st
 import { RedisModule } from "./infrastructure/redis";
 import { DictModule } from "./modules/dict/dict.module";
 import { HealthModule } from "./modules/health";
+import { RoleModule } from "./modules/role/role.module";
+import { SystemInitializationModule } from "./modules/system-initialization/system-initialization.module";
 
 /**
  * admin-api 根模块。
@@ -33,6 +35,8 @@ import { HealthModule } from "./modules/health";
 		RedisModule,
 		HealthModule,
 		DictModule,
+		RoleModule,
+		SystemInitializationModule,
 	],
 	controllers: [AppController],
 	providers: [
