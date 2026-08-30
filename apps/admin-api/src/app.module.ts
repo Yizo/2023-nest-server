@@ -16,6 +16,7 @@ import { DepartmentModule } from "./modules/department/department.module";
 import { HealthModule } from "./modules/health";
 import { RoleModule } from "./modules/role/role.module";
 import { SystemInitializationModule } from "./modules/system-initialization/system-initialization.module";
+import { UserModule } from "./modules/user/user.module";
 
 /**
  * admin-api 根模块。
@@ -38,6 +39,7 @@ import { SystemInitializationModule } from "./modules/system-initialization/syst
 		DictModule,
 		DepartmentModule,
 		RoleModule,
+		UserModule,
 		SystemInitializationModule,
 	],
 	controllers: [AppController],

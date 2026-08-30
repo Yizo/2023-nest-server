@@ -7,6 +7,7 @@ import {
 import { type FilterQuery, LockMode } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { getOffsetPagination, type PageResult } from "@/common/pagination";
+import { UserDataService } from "@/modules/user/user-data.service";
 import {
 	CreateDepartmentDto,
 	DepartmentResult,
@@ -23,7 +24,10 @@ type DepartmentPathView = Pick<DepartmentEntity, "id" | "ancestors">;
 
 @Injectable()
 export class DepartmentService {
-	constructor(private readonly em: EntityManager) {}
+	constructor(
+		private readonly em: EntityManager,
+		private readonly userData: UserDataService,
+	) {}
 
 	// 公共方法
 
@@ -213,7 +217,7 @@ export class DepartmentService {
 		});
 	}
 
-	/** 软删除部门；存在有效子部门时拒绝删除，不做隐式级联。 */
+	/** 软删除部门；存在有效子部门或关联用户时拒绝删除。 */
 	async removeDepartment(id: number): Promise<DepartmentResult> {
 		return this.em.transactional(async (em) => {
 			const entity = await this.findDepartmentEntity(em, id, true);
@@ -223,6 +227,9 @@ export class DepartmentService {
 				{ fields: ["id"] },
 			);
 			if (child) throw new ConflictException("存在有效子部门，不能删除当前部门");
+			if (await this.userData.isDepartmentAssigned(em, entity.id)) {
+				throw new ConflictException("部门仍有关联用户，不能删除当前部门");
+			}
 
 			const now = new Date();
 			entity.deletedAt = now;

@@ -4,9 +4,10 @@ import {
 	Injectable,
 	NotFoundException,
 } from "@nestjs/common";
-import { type FilterQuery, UniqueConstraintViolationException } from "@mikro-orm/core";
+import { type FilterQuery, LockMode, UniqueConstraintViolationException } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { getOffsetPagination, type PageResult } from "@/common/pagination";
+import { UserDataService } from "@/modules/user/user-data.service";
 import { CreateRoleDto, QueryRoleDto, RoleResult, UpdateRoleDto } from "./dto";
 import { RoleEntity } from "./entities";
 import { DataScope, SUPER_ADMIN_ROLE_CODE } from "./role.constants";
@@ -18,7 +19,10 @@ type RoleView = Pick<
 
 @Injectable()
 export class RoleService {
-	constructor(private readonly em: EntityManager) {}
+	constructor(
+		private readonly em: EntityManager,
+		private readonly userData: UserDataService,
+	) {}
 
 	// 公共方法
 
@@ -34,6 +38,43 @@ export class RoleService {
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 		};
+	}
+
+	// 数据方法
+
+	/** 按主键取未删除角色；删除时锁定角色，避免同时继续分配该角色。 */
+	private async findRoleEntity(
+		em: EntityManager,
+		id: number,
+		lockForWrite = false,
+	): Promise<RoleEntity> {
+		const entity = await em.findOne(
+			RoleEntity,
+			{ id, deletedAt: null },
+			{
+				fields: [
+					"id",
+					"roleName",
+					"roleCode",
+					"dataScope",
+					"status",
+					"remark",
+					"createdAt",
+					"updatedAt",
+					"deletedAt",
+				],
+				...(lockForWrite ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {}),
+			},
+		);
+		if (!entity) throw new NotFoundException("角色不存在");
+		return entity;
+	}
+
+	/** 系统角色只能由初始化流程维护，角色接口只允许操作普通角色。 */
+	private assertRoleCanBeManaged(entity: Pick<RoleEntity, "roleCode">): void {
+		if (entity.roleCode === SUPER_ADMIN_ROLE_CODE) {
+			throw new ForbiddenException("超级管理员角色只能由系统初始化维护");
+		}
 	}
 
 	// 角色方法
@@ -98,12 +139,12 @@ export class RoleService {
 
 	/** 按主键查询未删除角色，不存在则 404。 */
 	async findRole(id: number): Promise<RoleResult> {
-		return this.toRoleResult(await this.findRoleEntity(id));
+		return this.toRoleResult(await this.findRoleEntity(this.em, id));
 	}
 
 	/** 更新角色名称、数据范围、状态和备注，不允许修改角色编码。 */
 	async updateRole(id: number, dto: UpdateRoleDto): Promise<RoleResult> {
-		const entity = await this.findRoleEntity(id);
+		const entity = await this.findRoleEntity(this.em, id);
 		this.assertRoleCanBeManaged(entity);
 		if (dto.roleName !== undefined) entity.roleName = dto.roleName;
 		if (dto.dataScope !== undefined) entity.dataScope = dto.dataScope;
@@ -113,44 +154,21 @@ export class RoleService {
 		return this.toRoleResult(entity);
 	}
 
-	/** 软删除角色。 */
+	/** 软删除角色；超级管理员或仍被用户使用的角色不能删除。 */
 	async removeRole(id: number): Promise<RoleResult> {
-		const entity = await this.findRoleEntity(id);
-		this.assertRoleCanBeManaged(entity);
-		const now = new Date();
-		entity.deletedAt = now;
-		entity.updatedAt = now;
-		await this.em.flush();
-		return this.toRoleResult(entity);
+		return this.em.transactional(async (em) => {
+			const entity = await this.findRoleEntity(em, id, true);
+			this.assertRoleCanBeManaged(entity);
+			if (await this.userData.isRoleAssigned(em, entity.id)) {
+				throw new ConflictException("角色仍被用户使用，不能删除");
+			}
+
+			const now = new Date();
+			entity.deletedAt = now;
+			entity.updatedAt = now;
+			await em.flush();
+			return this.toRoleResult(entity);
+		});
 	}
 
-	/** 按主键取未删除角色。 */
-	private async findRoleEntity(id: number): Promise<RoleEntity> {
-		const entity = await this.em.findOne(
-			RoleEntity,
-			{ id, deletedAt: null },
-			{
-				fields: [
-					"id",
-					"roleName",
-					"roleCode",
-					"dataScope",
-					"status",
-					"remark",
-					"createdAt",
-					"updatedAt",
-					"deletedAt",
-				],
-			},
-		);
-		if (!entity) throw new NotFoundException("角色不存在");
-		return entity;
-	}
-
-	/** 系统角色只能由初始化流程维护，角色接口只允许操作普通角色。 */
-	private assertRoleCanBeManaged(entity: Pick<RoleEntity, "roleCode">): void {
-		if (entity.roleCode === SUPER_ADMIN_ROLE_CODE) {
-			throw new ForbiddenException("超级管理员角色只能由系统初始化维护");
-		}
-	}
 }

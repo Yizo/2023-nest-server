@@ -62,6 +62,96 @@ export class DictService {
 		};
 	}
 
+	// 数据方法
+
+	/** 按 id 取未删除的类型；lockForWrite 时锁定类型，避免删除和新增数据并发冲突。 */
+	private async findTypeEntity(
+		em: EntityManager,
+		id: number,
+		lockForWrite = false,
+	): Promise<DictTypeEntity> {
+		const entity = await em.findOne(
+			DictTypeEntity,
+			{ id, deletedAt: null },
+			{
+				fields: [
+					"id",
+					"dictName",
+					"dictType",
+					"status",
+					"remark",
+					"createdAt",
+					"updatedAt",
+					"deletedAt",
+				],
+				...(lockForWrite ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {}),
+			},
+		);
+		if (!entity) throw new NotFoundException("字典类型不存在");
+		return entity;
+	}
+
+	/** 按编码取未删除类型；创建数据时需要锁定父类型。 */
+	private async findTypeByCode(
+		em: EntityManager,
+		dictType: string,
+		lockForWrite = false,
+	): Promise<DictTypeEntity> {
+		const entity = await em.findOne(
+			DictTypeEntity,
+			{ dictType, deletedAt: null },
+			{
+				fields: ["id", "dictType"],
+				...(lockForWrite ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {}),
+			},
+		);
+		if (!entity) throw new NotFoundException("字典类型不存在");
+		return entity as DictTypeEntity;
+	}
+
+	/** 按 id 取未删除的数据，并确认所属类型仍然有效。 */
+	private async findDataEntity(em: EntityManager, dataId: number): Promise<DictDataEntity> {
+		const entity = await em.findOne(
+			DictDataEntity,
+			{
+				id: dataId,
+				deletedAt: null,
+				dictType: { deletedAt: null },
+			},
+			{
+				populate: ["dictType"],
+				strategy: LoadStrategy.JOINED,
+				fields: [
+					"id",
+					"label",
+					"value",
+					"sort",
+					"status",
+					"remark",
+					"createdAt",
+					"updatedAt",
+					"dictType.id",
+					"dictType.dictType",
+				],
+			},
+		);
+		if (!entity) throw new NotFoundException("字典数据不存在");
+		return entity as DictDataEntity;
+	}
+
+	/** 检查同一字典类型下的 value 是否已经被其他有效数据使用。 */
+	private async assertDataValueUnique(
+		em: EntityManager,
+		type: DictTypeEntity,
+		value: string,
+		excludedDataId?: number,
+	): Promise<void> {
+		const where: FilterQuery<DictDataEntity> = { dictType: type, value, deletedAt: null };
+		if (excludedDataId !== undefined) where.id = { $ne: excludedDataId };
+		const existing = await em.findOne(DictDataEntity, where, { fields: ["id"] });
+		if (existing) throw new ConflictException("同一字典类型下的字典值已存在");
+	}
+
 	// 字典类型方法
 
 	/** 创建字典类型。先查后插，flush 时再用唯一约束兜并发重复。编码创建后不可改。 */
@@ -146,51 +236,6 @@ export class DictService {
 			await em.flush();
 			return this.toTypeResult(type);
 		});
-	}
-
-	/** 按 id 取未删除的类型；lockForWrite 时 SELECT FOR UPDATE，须在事务内调用。 */
-	private async findTypeEntity(
-		em: EntityManager,
-		id: number,
-		lockForWrite = false,
-	): Promise<DictTypeEntity> {
-		const entity = await em.findOne(
-			DictTypeEntity,
-			{ id, deletedAt: null },
-			{
-				fields: [
-					"id",
-					"dictName",
-					"dictType",
-					"status",
-					"remark",
-					"createdAt",
-					"updatedAt",
-					"deletedAt",
-				],
-				...(lockForWrite ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {}),
-			},
-		);
-		if (!entity) throw new NotFoundException("字典类型不存在");
-		return entity;
-	}
-
-	/** 按类型编码取未删除的类型；创建数据时 lockForWrite 与删除类型互斥。 */
-	private async findTypeByCode(
-		em: EntityManager,
-		dictType: string,
-		lockForWrite = false,
-	): Promise<DictTypeEntity> {
-		const entity = await em.findOne(
-			DictTypeEntity,
-			{ dictType, deletedAt: null },
-			{
-				fields: ["id", "dictType"],
-				...(lockForWrite ? { lockMode: LockMode.PESSIMISTIC_WRITE } : {}),
-			},
-		);
-		if (!entity) throw new NotFoundException("字典类型不存在");
-		return entity as DictTypeEntity;
 	}
 
 	// 字典数据方法
@@ -285,46 +330,4 @@ export class DictService {
 		return this.toDataResult(data, data.dictType.dictType);
 	}
 
-	/** 按 id 取未删除的数据，并受控加载所属类型；类型已软删则当数据不存在。 */
-	private async findDataEntity(em: EntityManager, dataId: number): Promise<DictDataEntity> {
-		const entity = await em.findOne(
-			DictDataEntity,
-			{
-				id: dataId,
-				deletedAt: null,
-				dictType: { deletedAt: null },
-			},
-			{
-				populate: ["dictType"],
-				strategy: LoadStrategy.JOINED,
-				fields: [
-					"id",
-					"label",
-					"value",
-					"sort",
-					"status",
-					"remark",
-					"createdAt",
-					"updatedAt",
-					"dictType.id",
-					"dictType.dictType",
-				],
-			},
-		);
-		if (!entity) throw new NotFoundException("字典数据不存在");
-		return entity as DictDataEntity;
-	}
-
-	/** 断言该类型下 value 唯一。更新时传 excludedDataId 排除自身。 */
-	private async assertDataValueUnique(
-		em: EntityManager,
-		type: DictTypeEntity,
-		value: string,
-		excludedDataId?: number,
-	): Promise<void> {
-		const where: FilterQuery<DictDataEntity> = { dictType: type, value, deletedAt: null };
-		if (excludedDataId !== undefined) where.id = { $ne: excludedDataId };
-		const existing = await em.findOne(DictDataEntity, where, { fields: ["id"] });
-		if (existing) throw new ConflictException("同一字典类型下的字典值已存在");
-	}
 }

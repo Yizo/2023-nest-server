@@ -8,7 +8,7 @@ export class SystemInitializationController {
 	constructor(private readonly service: SystemInitializationService) {}
 
 	@Post("initialize")
-	@ApiOperation({ summary: "执行系统初始化", description: "幂等确保系统超级管理员角色存在。" })
+	@ApiOperation({ summary: "执行系统初始化", description: "幂等确保系统角色存在。" })
 	initialize() {
 		return this.service.initialize();
 	}
