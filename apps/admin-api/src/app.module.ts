@@ -12,6 +12,7 @@ import { DatabaseModule } from "./infrastructure/database";
 import { InfrastructureStartupService } from "./infrastructure/infrastructure-startup.service";
 import { RedisModule } from "./infrastructure/redis";
 import { DictModule } from "./modules/dict/dict.module";
+import { DepartmentModule } from "./modules/department/department.module";
 import { HealthModule } from "./modules/health";
 import { RoleModule } from "./modules/role/role.module";
 import { SystemInitializationModule } from "./modules/system-initialization/system-initialization.module";
@@ -35,6 +36,7 @@ import { SystemInitializationModule } from "./modules/system-initialization/syst
 		RedisModule,
 		HealthModule,
 		DictModule,
+		DepartmentModule,
 		RoleModule,
 		SystemInitializationModule,
 	],

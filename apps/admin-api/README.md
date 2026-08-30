@@ -174,6 +174,7 @@ GET /api/v1/docs                Swagger UI
 
 /api/v1/dict/types              字典类型 CRUD
 /api/v1/dict/data               字典数据 CRUD
+/api/v1/departments             部门 CRUD
 /api/v1/roles                   角色 CRUD
 /api/v1/system/initialize       手动执行幂等系统初始化
 ```
