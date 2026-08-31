@@ -1,5 +1,7 @@
 import { defineEntity, p } from "@mikro-orm/core";
 import { SoftDeleteEntitySchema } from "@/common/entities/base.entity";
+import { MenuEntity } from "@/modules/menu/entities/menu.entity";
+import { RoleMenuEntity } from "@/modules/menu/entities/role-menu.entity";
 import { DataScope } from "../role.constants";
 
 const RoleSchema = defineEntity({
@@ -21,6 +23,15 @@ const RoleSchema = defineEntity({
 			),
 		status: p.smallint().$type<0 | 1>().default(1).comment("状态，0 停用，1 启用"),
 		remark: p.string().length(500).nullable().comment("备注"),
+		menus: () =>
+			p
+				.manyToMany(MenuEntity)
+				.pivotEntity(() => RoleMenuEntity)
+				.joinColumn("role_id")
+				.inverseJoinColumn("menu_id")
+				.createForeignKeyConstraint(false)
+				.cascade()
+				.hidden(),
 	},
 	uniques: [
 		{

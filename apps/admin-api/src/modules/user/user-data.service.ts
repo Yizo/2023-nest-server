@@ -46,18 +46,6 @@ export class UserDataService {
 		return normalized;
 	}
 
-	/** 检查 ID 列表，只允许不重复的正整数。 */
-	normalizeIds(ids: unknown, fieldName: string): number[] {
-		if (!Array.isArray(ids)) throw new BadRequestException(`${fieldName}必须是数组`);
-		if (!ids.every((id) => Number.isSafeInteger(id) && id > 0)) {
-			throw new BadRequestException(`${fieldName}必须是正整数`);
-		}
-
-		const normalized = [...new Set(ids)];
-		if (normalized.length !== ids.length) throw new BadRequestException(`${fieldName}不能重复`);
-		return normalized;
-	}
-
 	// 数据方法
 
 	/** 查询用户公开字段，并加载角色和部门 ID。 */

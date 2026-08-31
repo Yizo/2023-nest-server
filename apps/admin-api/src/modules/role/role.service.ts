@@ -4,9 +4,16 @@ import {
 	Injectable,
 	NotFoundException,
 } from "@nestjs/common";
-import { type FilterQuery, LockMode, UniqueConstraintViolationException } from "@mikro-orm/core";
+import {
+	type FilterQuery,
+	LoadStrategy,
+	LockMode,
+	UniqueConstraintViolationException,
+} from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { getOffsetPagination, type PageResult } from "@/common/pagination";
+import { getIdDiff, normalizeIds } from "@/common/utils";
+import { RoleMenuDataService } from "@/modules/menu/role-menu-data.service";
 import { UserDataService } from "@/modules/user/user-data.service";
 import { CreateRoleDto, QueryRoleDto, RoleResult, UpdateRoleDto } from "./dto";
 import { RoleEntity } from "./entities";
@@ -16,18 +23,20 @@ type RoleView = Pick<
 	RoleEntity,
 	"id" | "roleName" | "roleCode" | "dataScope" | "status" | "remark" | "createdAt" | "updatedAt"
 >;
+type RoleWriteEntity = RoleView & Pick<RoleEntity, "deletedAt">;
 
 @Injectable()
 export class RoleService {
 	constructor(
 		private readonly em: EntityManager,
 		private readonly userData: UserDataService,
+		private readonly roleMenus: RoleMenuDataService,
 	) {}
 
 	// 公共方法
 
 	/** 角色实体转接口返回，不含 deletedAt。 */
-	private toRoleResult(entity: RoleView): RoleResult {
+	private toRoleResult(entity: RoleView, menuIds: number[]): RoleResult {
 		return {
 			id: entity.id,
 			roleName: entity.roleName,
@@ -35,6 +44,7 @@ export class RoleService {
 			dataScope: entity.dataScope,
 			status: entity.status,
 			remark: entity.remark ?? null,
+			menuIds: [...menuIds].sort((left, right) => left - right),
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
 		};
@@ -47,7 +57,7 @@ export class RoleService {
 		em: EntityManager,
 		id: number,
 		lockForWrite = false,
-	): Promise<RoleEntity> {
+	): Promise<RoleWriteEntity> {
 		const entity = await em.findOne(
 			RoleEntity,
 			{ id, deletedAt: null },
@@ -70,11 +80,49 @@ export class RoleService {
 		return entity;
 	}
 
+	/** 查询角色公开字段，并加载角色拥有的菜单和操作 ID。 */
+	private async findRoleViewEntity(em: EntityManager, id: number) {
+		const entity = await em.findOne(
+			RoleEntity,
+			{ id, deletedAt: null },
+			{
+				fields: [
+					"id",
+					"roleName",
+					"roleCode",
+					"dataScope",
+					"status",
+					"remark",
+					"createdAt",
+					"updatedAt",
+					"menus.id",
+				],
+				populate: ["menus:ref"],
+				populateWhere: { deletedAt: null },
+				strategy: LoadStrategy.SELECT_IN,
+			},
+		);
+		if (!entity) throw new NotFoundException("角色不存在");
+		return entity;
+	}
+
 	/** 系统角色只能由初始化流程维护，角色接口只允许操作普通角色。 */
 	private assertRoleCanBeManaged(entity: Pick<RoleEntity, "roleCode">): void {
 		if (entity.roleCode === SUPER_ADMIN_ROLE_CODE) {
 			throw new ForbiddenException("超级管理员角色只能由系统初始化维护");
 		}
+	}
+
+	/** 修改角色菜单；只删除移除的菜单，只新增新分配的菜单。 */
+	private async replaceMenus(em: EntityManager, roleId: number, menuIds: unknown): Promise<number[]> {
+		const targetIds = normalizeIds(menuIds, "菜单 ID");
+		await this.roleMenus.assertMenusAvailable(em, targetIds);
+		const currentIds = await this.roleMenus.findMenuIds(em, roleId);
+		const { toAdd, toRemove } = getIdDiff(currentIds, targetIds);
+
+		await this.roleMenus.removeRoleMenus(em, roleId, toRemove);
+		await this.roleMenus.addRoleMenus(em, roleId, toAdd);
+		return targetIds;
 	}
 
 	// 角色方法
@@ -85,26 +133,32 @@ export class RoleService {
 		if (roleCode === SUPER_ADMIN_ROLE_CODE) {
 			throw new ForbiddenException("超级管理员角色只能由系统初始化创建");
 		}
-		if (await this.em.findOne(RoleEntity, { roleCode, deletedAt: null }, { fields: ["id"] })) {
-			throw new ConflictException("角色编码已存在");
-		}
 
-		const entity = this.em.create(RoleEntity, {
-			roleName: dto.roleName,
-			roleCode,
-			dataScope: dto.dataScope ?? DataScope.NONE,
-			status: dto.status ?? 1,
-			remark: dto.remark ?? null,
-		});
-		try {
-			await this.em.persist(entity).flush();
-		} catch (error) {
-			if (error instanceof UniqueConstraintViolationException) {
+		return this.em.transactional(async (em) => {
+			if (await em.findOne(RoleEntity, { roleCode, deletedAt: null }, { fields: ["id"] })) {
 				throw new ConflictException("角色编码已存在");
 			}
-			throw error;
-		}
-		return this.toRoleResult(entity);
+
+			const entity = em.create(RoleEntity, {
+				roleName: dto.roleName,
+				roleCode,
+				dataScope: dto.dataScope ?? DataScope.NONE,
+				status: dto.status ?? 1,
+				remark: dto.remark ?? null,
+			});
+			try {
+				await em.flush();
+			} catch (error) {
+				if (error instanceof UniqueConstraintViolationException) {
+					throw new ConflictException("角色编码已存在");
+				}
+				throw error;
+			}
+
+			const menuIds =
+				dto.menuIds === undefined ? [] : await this.replaceMenus(em, entity.id, dto.menuIds);
+			return this.toRoleResult(entity, menuIds);
+		});
 	}
 
 	/** 分页查询未删除角色。 */
@@ -125,12 +179,18 @@ export class RoleService {
 				"remark",
 				"createdAt",
 				"updatedAt",
+				"menus.id",
 			],
 			...getOffsetPagination(query),
 			orderBy: { createdAt: "desc", id: "desc" },
+			populate: ["menus:ref"],
+			populateWhere: { deletedAt: null },
+			strategy: LoadStrategy.SELECT_IN,
 		});
 		return {
-			items: entities.map((entity) => this.toRoleResult(entity)),
+			items: entities.map((entity) =>
+				this.toRoleResult(entity, entity.menus.getIdentifiers<number>()),
+			),
 			total,
 			page: query.page,
 			pageSize: query.pageSize,
@@ -139,19 +199,27 @@ export class RoleService {
 
 	/** 按主键查询未删除角色，不存在则 404。 */
 	async findRole(id: number): Promise<RoleResult> {
-		return this.toRoleResult(await this.findRoleEntity(this.em, id));
+		const entity = await this.findRoleViewEntity(this.em, id);
+		return this.toRoleResult(entity, entity.menus.getIdentifiers<number>());
 	}
 
 	/** 更新角色名称、数据范围、状态和备注，不允许修改角色编码。 */
 	async updateRole(id: number, dto: UpdateRoleDto): Promise<RoleResult> {
-		const entity = await this.findRoleEntity(this.em, id);
-		this.assertRoleCanBeManaged(entity);
-		if (dto.roleName !== undefined) entity.roleName = dto.roleName;
-		if (dto.dataScope !== undefined) entity.dataScope = dto.dataScope;
-		if (dto.status !== undefined) entity.status = dto.status;
-		if (dto.remark !== undefined) entity.remark = dto.remark;
-		await this.em.flush();
-		return this.toRoleResult(entity);
+		return this.em.transactional(async (em) => {
+			const entity = await this.findRoleEntity(em, id, true);
+			this.assertRoleCanBeManaged(entity);
+			if (dto.roleName !== undefined) entity.roleName = dto.roleName;
+			if (dto.dataScope !== undefined) entity.dataScope = dto.dataScope;
+			if (dto.status !== undefined) entity.status = dto.status;
+			if (dto.remark !== undefined) entity.remark = dto.remark;
+			const menuIds =
+				dto.menuIds === undefined
+					? await this.roleMenus.findMenuIds(em, entity.id)
+					: await this.replaceMenus(em, entity.id, dto.menuIds);
+
+			await em.flush();
+			return this.toRoleResult(entity, menuIds);
+		});
 	}
 
 	/** 软删除角色；超级管理员或仍被用户使用的角色不能删除。 */
@@ -162,12 +230,13 @@ export class RoleService {
 			if (await this.userData.isRoleAssigned(em, entity.id)) {
 				throw new ConflictException("角色仍被用户使用，不能删除");
 			}
+			await this.roleMenus.clearRoleMenus(em, entity.id);
 
 			const now = new Date();
 			entity.deletedAt = now;
 			entity.updatedAt = now;
 			await em.flush();
-			return this.toRoleResult(entity);
+			return this.toRoleResult(entity, []);
 		});
 	}
 

@@ -20,6 +20,9 @@ export class RoleResult {
 	@ApiProperty({ description: "备注", nullable: true })
 	remark!: string | null;
 
+	@ApiProperty({ description: "菜单和操作权限 ID", type: [Number] })
+	menuIds!: number[];
+
 	@ApiProperty({ description: "创建时间" })
 	createdAt!: Date;
 

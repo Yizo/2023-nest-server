@@ -1,6 +1,7 @@
 import { Type } from "class-transformer";
 import {
 	IsIn,
+	IsArray,
 	IsEnum,
 	IsInt,
 	IsOptional,
@@ -42,4 +43,11 @@ export class CreateRoleDto {
 	@IsString({ message: "备注必须是字符串" })
 	@MaxLength(500, { message: "备注不能超过 500 个字符" })
 	remark?: string | null;
+
+	@ApiPropertyOptional({ description: "菜单和操作权限 ID", type: [Number] })
+	@IsOptional()
+	@IsArray({ message: "菜单 ID 必须是数组" })
+	@IsInt({ each: true, message: "菜单 ID 必须是整数" })
+	@Min(1, { each: true, message: "菜单 ID 必须是正整数" })
+	menuIds?: number[];
 }

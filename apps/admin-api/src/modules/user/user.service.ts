@@ -6,6 +6,7 @@ import {
 } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { getOffsetPagination, type PageResult } from "@/common/pagination";
+import { getIdDiff, normalizeIds } from "@/common/utils";
 import { CreateUserDto, QueryUserDto, UpdateUserDto, UserResult } from "./dto";
 import { UserEntity } from "./entities";
 import { UserDataService } from "./user-data.service";
@@ -21,13 +22,10 @@ export class UserService {
 
 	/** 修改用户角色；只删除移除的角色，只新增新分配的角色。 */
 	private async replaceRoles(em: EntityManager, userId: number, roleIds: unknown): Promise<number[]> {
-		const targetIds = this.data.normalizeIds(roleIds, "角色 ID");
+		const targetIds = normalizeIds(roleIds, "角色 ID");
 		await this.data.assertRolesAvailable(em, targetIds);
 		const currentIds = await this.data.findRoleIds(em, userId);
-		const targetSet = new Set(targetIds);
-		const toRemove = currentIds.filter((roleId) => !targetSet.has(roleId));
-		const currentSet = new Set(currentIds);
-		const toAdd = targetIds.filter((roleId) => !currentSet.has(roleId));
+		const { toAdd, toRemove } = getIdDiff(currentIds, targetIds);
 
 		await this.data.removeUserRoles(em, userId, toRemove);
 		await this.data.addUserRoles(em, userId, toAdd);
@@ -40,13 +38,10 @@ export class UserService {
 		userId: number,
 		deptIds: unknown,
 	): Promise<number[]> {
-		const targetIds = this.data.normalizeIds(deptIds, "部门 ID");
+		const targetIds = normalizeIds(deptIds, "部门 ID");
 		await this.data.assertDepartmentsAvailable(em, targetIds);
 		const currentIds = await this.data.findDepartmentIds(em, userId);
-		const targetSet = new Set(targetIds);
-		const toRemove = currentIds.filter((deptId) => !targetSet.has(deptId));
-		const currentSet = new Set(currentIds);
-		const toAdd = targetIds.filter((deptId) => !currentSet.has(deptId));
+		const { toAdd, toRemove } = getIdDiff(currentIds, targetIds);
 
 		await this.data.removeUserDepartments(em, userId, toRemove);
 		await this.data.addUserDepartments(em, userId, toAdd);
