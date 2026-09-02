@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
 import { AccessController } from "./access.controller";
 import { AccessInvalidation } from "./access-invalidation.service";
 import { PermissionCacheService } from "./permission-cache.service";
@@ -13,8 +12,7 @@ import { PermissionService } from "./permission.service";
 		PermissionService,
 		AccessInvalidation,
 		PermissionGuard,
-		{ provide: APP_GUARD, useClass: PermissionGuard },
 	],
-	exports: [PermissionService, AccessInvalidation],
+	exports: [PermissionService, AccessInvalidation, PermissionGuard],
 })
 export class AccessModule {}

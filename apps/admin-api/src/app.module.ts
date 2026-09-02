@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
-import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { configuration } from "./config";
@@ -11,7 +11,9 @@ import { DatabaseModule } from "./infrastructure/database";
 import { InfrastructureStartupService } from "./infrastructure/infrastructure-startup.service";
 import { RedisModule } from "./infrastructure/redis";
 import { AccessModule } from "./modules/access/access.module";
+import { PermissionGuard } from "./modules/access/permission.guard";
 import { AuthModule } from "./modules/auth/auth.module";
+import { AuthGuard } from "./modules/auth/auth.guard";
 import { DictModule } from "./modules/dict/dict.module";
 import { DepartmentModule } from "./modules/department/department.module";
 import { HealthModule } from "./modules/health";
@@ -53,6 +55,9 @@ import { UserModule } from "./modules/user/user.module";
 		{ provide: APP_FILTER, useClass: HttpExceptionFilter },
 		{ provide: APP_INTERCEPTOR, useClass: RequestLoggingInterceptor },
 		{ provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+		// 顺序必须是先 AuthGuard 后 PermissionGuard；不能把 APP_GUARD 放在会被 Auth 依赖链提前加载的模块里。
+		{ provide: APP_GUARD, useClass: AuthGuard },
+		{ provide: APP_GUARD, useClass: PermissionGuard },
 	],
 })
 export class AppModule implements NestModule {
