@@ -15,7 +15,7 @@ import { getOffsetPagination, type PageResult } from "@/common/pagination";
 import { getIdDiff, normalizeIds } from "@/common/utils";
 import { AccessInvalidation } from "@/modules/access/access-invalidation.service";
 import { RoleMenuDataService } from "./role-menu-data.service";
-import { UserDataService } from "@/modules/user/user-data.service";
+import { UserQuery } from "@/modules/user/user-query.service";
 import { CreateRoleDto, QueryRoleDto, RoleResult, UpdateRoleDto } from "./dto";
 import { RoleEntity } from "./entities";
 import { SUPER_ADMIN_ROLE_CODE } from "./role.constants";
@@ -30,7 +30,7 @@ type RoleWriteEntity = RoleView & Pick<RoleEntity, "deletedAt">;
 export class RoleService {
 	constructor(
 		private readonly em: EntityManager,
-		private readonly userData: UserDataService,
+		private readonly userQuery: UserQuery,
 		private readonly roleMenus: RoleMenuDataService,
 		private readonly accessInvalidation: AccessInvalidation,
 	) {}
@@ -224,7 +224,7 @@ export class RoleService {
 		return this.em.transactional(async (em) => {
 			const entity = await this.findRoleEntity(em, id, true);
 			this.assertRoleCanBeManaged(entity);
-			if (await this.userData.isRoleAssigned(em, entity.id)) {
+			if (await this.userQuery.isRoleAssigned(em, entity.id)) {
 				throw new ConflictException("角色仍被用户使用，不能删除");
 			}
 			await this.roleMenus.clearRoleMenus(em, entity.id);

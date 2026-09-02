@@ -7,7 +7,7 @@ import {
 import { type FilterQuery, LockMode } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { getOffsetPagination, type PageResult } from "@/common/pagination";
-import { UserDataService } from "@/modules/user/user-data.service";
+import { UserQuery } from "@/modules/user/user-query.service";
 import {
 	CreateDepartmentDto,
 	DepartmentResult,
@@ -26,7 +26,7 @@ type DepartmentPathView = Pick<DepartmentEntity, "id" | "ancestors">;
 export class DepartmentService {
 	constructor(
 		private readonly em: EntityManager,
-		private readonly userData: UserDataService,
+		private readonly userQuery: UserQuery,
 	) {}
 
 	// 公共方法
@@ -229,7 +229,7 @@ export class DepartmentService {
 				{ fields: ["id"] },
 			);
 			if (child) throw new ConflictException("存在有效子部门，不能删除当前部门");
-			if (await this.userData.isDepartmentAssigned(em, entity.id)) {
+			if (await this.userQuery.isDepartmentAssigned(em, entity.id)) {
 				throw new ConflictException("部门仍有关联用户，不能删除当前部门");
 			}
 

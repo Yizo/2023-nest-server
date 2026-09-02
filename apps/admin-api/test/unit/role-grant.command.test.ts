@@ -6,7 +6,7 @@ describe("RoleGrantCommand", () => {
 		const roleMenus = {
 			clearMenuRoles: vi.fn().mockResolvedValue(undefined),
 		};
-		const command = new RoleGrantCommand(roleMenus as never);
+		const command = new RoleGrantCommand(roleMenus as never, { transactional: vi.fn() } as never);
 		const em = {} as never;
 
 		await command.clearGrantsByMenu(em, 11);

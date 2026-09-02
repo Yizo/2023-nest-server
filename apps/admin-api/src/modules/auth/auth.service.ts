@@ -1,4 +1,3 @@
-import * as bcrypt from "bcrypt";
 import {
 	Injectable,
 	UnauthorizedException,
@@ -10,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import type { AdminApiConfig } from "@/config";
 import type { AuthenticatedUser, AuthTokenPayload } from "@/common/types";
 import { RedisService } from "@/infrastructure/redis";
+import { UserQuery } from "@/modules/user/user-query.service";
 import { LoginDto, RefreshTokenDto, TokenResult } from "./dto";
 import {
 	ACCESS_TOKEN_TYPE,
@@ -17,7 +17,6 @@ import {
 	REFRESH_TOKEN_TYPE,
 	REFRESH_TOKEN_USER_KEY_PREFIX,
 } from "./auth.constants";
-import { UserDataService } from "@/modules/user/user-data.service";
 
 @Injectable()
 export class AuthService {
@@ -25,7 +24,7 @@ export class AuthService {
 
 	constructor(
 		private readonly em: EntityManager,
-		private readonly users: UserDataService,
+		private readonly users: UserQuery,
 		private readonly jwt: JwtService,
 		private readonly redis: RedisService,
 		configService: ConfigService,
@@ -35,12 +34,8 @@ export class AuthService {
 
 	/** 校验账号密码并签发一组新的令牌。 */
 	async login(dto: LoginDto): Promise<TokenResult> {
-		const userName = this.users.normalizeUserName(dto.userName);
-		const user = await this.users.findUserForLogin(this.em, userName);
-		if (!user || user.status !== 1 || !(await bcrypt.compare(dto.password, user.passwordHash))) {
-			throw new UnauthorizedException("用户账号或密码错误");
-		}
-
+		const user = await this.users.verifyLogin(this.em, dto.userName, dto.password);
+		if (!user) throw new UnauthorizedException("用户账号或密码错误");
 		return this.issueTokens(user.id, user.userName);
 	}
 
