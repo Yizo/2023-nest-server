@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AccessInvalidation } from "@/modules/access/access-invalidation.service";
+import { SUPER_ADMIN_ROLE_CODE } from "@/modules/role/role.constants";
 
 describe("AccessInvalidation", () => {
 	it("invalidateRole 查出该角色下用户后交给缓存", async () => {
@@ -34,11 +35,11 @@ describe("AccessInvalidation", () => {
 
 		await service.invalidateMenu(9);
 
-		expect(em.execute).toHaveBeenCalledWith(
-			expect.stringContaining("sys_role_menu"),
-			[9],
-			"all",
-		);
+		const [sql, params] = em.execute.mock.calls[0] as [string, unknown[]];
+		expect(sql).toContain('"sys_role_menu"');
+		expect(sql).toContain('"sys_user_role"');
+		expect(sql).toContain('"sys_role"');
+		expect(params).toEqual(expect.arrayContaining([9, SUPER_ADMIN_ROLE_CODE]));
 		expect(cache.invalidateUsers).toHaveBeenCalledWith([4]);
 	});
 

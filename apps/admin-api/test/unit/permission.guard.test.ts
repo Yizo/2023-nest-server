@@ -44,4 +44,19 @@ describe("PermissionGuard", () => {
 		};
 		await expect(guard.canActivate(ctx as never)).rejects.toBeInstanceOf(UnauthorizedException);
 	});
+
+	it("有权限元数据和 request.user 则校验操作权限", async () => {
+		const reflector = {
+			getAllAndOverride: vi.fn((key: string) => (key === PERMISSIONS_KEY ? ["user:list"] : undefined)),
+		};
+		const permissions = { assertPermissions: vi.fn().mockResolvedValue(undefined) };
+		const guard = new PermissionGuard(reflector as never, permissions as never);
+		const ctx = {
+			getHandler: () => ({}),
+			getClass: () => ({}),
+			switchToHttp: () => ({ getRequest: () => ({ user: { id: 1 } }) }),
+		};
+		await expect(guard.canActivate(ctx as never)).resolves.toBe(true);
+		expect(permissions.assertPermissions).toHaveBeenCalledWith(1, ["user:list"]);
+	});
 });

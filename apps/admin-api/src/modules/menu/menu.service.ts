@@ -151,7 +151,7 @@ export class MenuService {
 	async createMenu(dto: CreateMenuDto): Promise<MenuResult> {
 		this.assertCreateFields(dto);
 
-		return this.em.transactional(async (em) => {
+		const result = await this.em.transactional(async (em) => {
 			await this.data.findParentEntity(em, dto.parentId, true);
 			const code = dto.code ?? null;
 			const routeName = dto.routeName ?? null;
@@ -181,6 +181,8 @@ export class MenuService {
 			}
 			return this.data.toMenuResult(entity);
 		});
+		await this.accessInvalidation.invalidateMenu(result.id);
+		return result;
 	}
 
 	/** 查询未删除菜单；不传分页参数时返回全部菜单。 */
@@ -297,6 +299,7 @@ export class MenuService {
 			if (await this.data.hasActiveChildren(em, entity.id)) {
 				throw new ConflictException("存在有效子菜单，不能删除当前菜单");
 			}
+			await this.accessInvalidation.invalidateMenu(entity.id);
 			await this.roleMenus.clearMenuRoles(em, entity.id);
 
 			const now = new Date();
