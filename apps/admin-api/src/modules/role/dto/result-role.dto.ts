@@ -1,5 +1,4 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { DataScope } from "../role.constants";
 
 export class RoleResult {
 	@ApiProperty({ description: "主键" })
@@ -10,9 +9,6 @@ export class RoleResult {
 
 	@ApiProperty({ description: "角色编码" })
 	roleCode!: string;
-
-	@ApiProperty({ description: "数据范围策略", enum: DataScope })
-	dataScope!: DataScope;
 
 	@ApiProperty({ description: "状态，0 停用，1 启用", enum: [0, 1] })
 	status!: 0 | 1;

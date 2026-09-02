@@ -12,7 +12,7 @@ const MenuSchema = defineEntity({
 			.string()
 			.$type<MenuType>()
 			.length(20)
-			.comment("类型，directory 目录，menu 菜单，action 操作"),
+			.comment("类型，page 页面，menu 菜单，external 外链，action 操作"),
 		parentId: p
 			.integer()
 			.nullable()

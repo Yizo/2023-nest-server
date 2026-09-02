@@ -13,15 +13,16 @@ import {
 import { EntityManager } from "@mikro-orm/postgresql";
 import { getOffsetPagination, type PageResult } from "@/common/pagination";
 import { getIdDiff, normalizeIds } from "@/common/utils";
+import { AccessInvalidation } from "@/modules/access/access-invalidation.service";
 import { RoleMenuDataService } from "@/modules/menu/role-menu-data.service";
 import { UserDataService } from "@/modules/user/user-data.service";
 import { CreateRoleDto, QueryRoleDto, RoleResult, UpdateRoleDto } from "./dto";
 import { RoleEntity } from "./entities";
-import { DataScope, SUPER_ADMIN_ROLE_CODE } from "./role.constants";
+import { SUPER_ADMIN_ROLE_CODE } from "./role.constants";
 
 type RoleView = Pick<
 	RoleEntity,
-	"id" | "roleName" | "roleCode" | "dataScope" | "status" | "remark" | "createdAt" | "updatedAt"
+	"id" | "roleName" | "roleCode" | "status" | "remark" | "createdAt" | "updatedAt"
 >;
 type RoleWriteEntity = RoleView & Pick<RoleEntity, "deletedAt">;
 
@@ -31,6 +32,7 @@ export class RoleService {
 		private readonly em: EntityManager,
 		private readonly userData: UserDataService,
 		private readonly roleMenus: RoleMenuDataService,
+		private readonly accessInvalidation: AccessInvalidation,
 	) {}
 
 	// 公共方法
@@ -41,7 +43,6 @@ export class RoleService {
 			id: entity.id,
 			roleName: entity.roleName,
 			roleCode: entity.roleCode,
-			dataScope: entity.dataScope,
 			status: entity.status,
 			remark: entity.remark ?? null,
 			menuIds: [...menuIds].sort((left, right) => left - right),
@@ -66,7 +67,6 @@ export class RoleService {
 					"id",
 					"roleName",
 					"roleCode",
-					"dataScope",
 					"status",
 					"remark",
 					"createdAt",
@@ -90,7 +90,6 @@ export class RoleService {
 					"id",
 					"roleName",
 					"roleCode",
-					"dataScope",
 					"status",
 					"remark",
 					"createdAt",
@@ -142,7 +141,6 @@ export class RoleService {
 			const entity = em.create(RoleEntity, {
 				roleName: dto.roleName,
 				roleCode,
-				dataScope: dto.dataScope ?? DataScope.NONE,
 				status: dto.status ?? 1,
 				remark: dto.remark ?? null,
 			});
@@ -166,7 +164,6 @@ export class RoleService {
 		const where: FilterQuery<RoleEntity> = { deletedAt: null };
 		if (query.roleName) where.roleName = { $ilike: `%${query.roleName}%` };
 		if (query.roleCode) where.roleCode = { $ilike: `%${query.roleCode}%` };
-		if (query.dataScope) where.dataScope = query.dataScope;
 		if (query.status !== undefined) where.status = query.status;
 
 		const [entities, total] = await this.em.findAndCount(RoleEntity, where, {
@@ -174,7 +171,6 @@ export class RoleService {
 				"id",
 				"roleName",
 				"roleCode",
-				"dataScope",
 				"status",
 				"remark",
 				"createdAt",
@@ -203,13 +199,12 @@ export class RoleService {
 		return this.toRoleResult(entity, entity.menus.getIdentifiers<number>());
 	}
 
-	/** 更新角色名称、数据范围、状态和备注，不允许修改角色编码。 */
+	/** 更新角色名称、状态和备注，不允许修改角色编码。 */
 	async updateRole(id: number, dto: UpdateRoleDto): Promise<RoleResult> {
-		return this.em.transactional(async (em) => {
+		const result = await this.em.transactional(async (em) => {
 			const entity = await this.findRoleEntity(em, id, true);
 			this.assertRoleCanBeManaged(entity);
 			if (dto.roleName !== undefined) entity.roleName = dto.roleName;
-			if (dto.dataScope !== undefined) entity.dataScope = dto.dataScope;
 			if (dto.status !== undefined) entity.status = dto.status;
 			if (dto.remark !== undefined) entity.remark = dto.remark;
 			const menuIds =
@@ -220,6 +215,8 @@ export class RoleService {
 			await em.flush();
 			return this.toRoleResult(entity, menuIds);
 		});
+		await this.accessInvalidation.invalidateRole(id);
+		return result;
 	}
 
 	/** 软删除角色；超级管理员或仍被用户使用的角色不能删除。 */

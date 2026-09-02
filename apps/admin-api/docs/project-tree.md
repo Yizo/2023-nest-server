@@ -44,7 +44,7 @@ RequestIdMiddleware
         ↓
 MikroOrmRequestContextMiddleware
         ↓
-AuthPlaceholderGuard
+AuthGuard
         ↓
 RequestLoggingInterceptor
         ↓
@@ -63,4 +63,4 @@ HttpExceptionFilter
 2. 实体放在业务模块或 `src/database/entities`，新增实体时先确认数据库结构管理方式。
 3. Controller 只处理 HTTP 输入输出，数据库读写放到 Service 或 Query 类。
 4. 不恢复仓库根目录的通用 Query Builder。
-5. 业务路由在认证模块接入后再使用 `@AuthRequired()`。
+5. 业务路由使用 `@AuthRequired()` 或 `@RequirePermissions()`，公开路由必须显式使用 `@Public()`。

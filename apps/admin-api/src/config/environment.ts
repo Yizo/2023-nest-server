@@ -20,6 +20,14 @@ export interface AdminApiConfig {
 	redis: {
 		url: string;
 	};
+	auth: {
+		accessSecret: string;
+		refreshSecret: string;
+		initializationKey: string;
+		accessExpiresIn: number;
+		refreshExpiresIn: number;
+		permissionCacheExpiresIn: number;
+	};
 	cors: {
 		origins: string[];
 		credentials: boolean;
@@ -75,6 +83,15 @@ export function createConfiguration(raw: NodeJS.ProcessEnv = process.env): Admin
 		redis: {
 			// production 为空时保留空字符串，让 node-redis 在运行时报告错误。
 			url: raw.REDIS_URL || "",
+		},
+		auth: {
+			// 密钥不提供默认值，避免开发默认密钥被带到其他环境。
+			accessSecret: raw.JWT_ACCESS_SECRET || "",
+			refreshSecret: raw.JWT_REFRESH_SECRET || "",
+			initializationKey: raw.SYSTEM_INITIALIZATION_KEY || "",
+			accessExpiresIn: Number(raw.JWT_ACCESS_TTL_SECONDS || "900"),
+			refreshExpiresIn: Number(raw.JWT_REFRESH_TTL_SECONDS || "604800"),
+			permissionCacheExpiresIn: Number(raw.PERMISSION_CACHE_TTL_SECONDS || "300"),
 		},
 		cors: {
 			origins: (raw.CORS_ORIGINS || "http://localhost:5173")

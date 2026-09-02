@@ -39,6 +39,16 @@ export class RoleMenuDataService {
 		return relations.map((relation) => relation.menu.id);
 	}
 
+	/** 查询拥有指定菜单的角色 ID，供菜单变化后清理权限缓存。 */
+	async findRoleIdsByMenu(em: EntityManager, menuId: number): Promise<number[]> {
+		const relations = await em.find(
+			RoleMenuEntity,
+			{ menu: em.getReference(MenuEntity, menuId) },
+			{ fields: ["role.id"] },
+		);
+		return relations.map((relation) => relation.role.id);
+	}
+
 	/**
 	 * 根据角色 ID 和菜单 ID 列表删除角色菜单关系。
 	 */

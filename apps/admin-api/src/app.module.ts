@@ -1,16 +1,17 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
+import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { configuration } from "./config";
 import { HttpExceptionFilter } from "./common/filters";
-import { AuthPlaceholderGuard } from "./common/guards";
 import { RequestLoggingInterceptor, ResponseInterceptor } from "./common/interceptors";
 import { RequestIdMiddleware } from "./common/middleware";
 import { AppLoggerModule } from "./common/logger";
 import { DatabaseModule } from "./infrastructure/database";
 import { InfrastructureStartupService } from "./infrastructure/infrastructure-startup.service";
 import { RedisModule } from "./infrastructure/redis";
+import { AccessModule } from "./modules/access/access.module";
+import { AuthModule } from "./modules/auth/auth.module";
 import { DictModule } from "./modules/dict/dict.module";
 import { DepartmentModule } from "./modules/department/department.module";
 import { HealthModule } from "./modules/health";
@@ -37,6 +38,8 @@ import { UserModule } from "./modules/user/user.module";
 		DatabaseModule,
 		RedisModule,
 		HealthModule,
+		AuthModule,
+		AccessModule,
 		DictModule,
 		MenuModule,
 		DepartmentModule,
@@ -48,7 +51,6 @@ import { UserModule } from "./modules/user/user.module";
 	providers: [
 		InfrastructureStartupService,
 		{ provide: APP_FILTER, useClass: HttpExceptionFilter },
-		{ provide: APP_GUARD, useClass: AuthPlaceholderGuard },
 		{ provide: APP_INTERCEPTOR, useClass: RequestLoggingInterceptor },
 		{ provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
 	],

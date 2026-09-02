@@ -1,8 +1,7 @@
 import { Type } from "class-transformer";
-import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { PageQueryDto } from "@/common/pagination";
-import { DataScope } from "../role.constants";
 
 export class QueryRoleDto extends PageQueryDto {
 	@ApiPropertyOptional({ description: "角色名称，模糊匹配", maxLength: 100 })
@@ -16,11 +15,6 @@ export class QueryRoleDto extends PageQueryDto {
 	@IsString({ message: "角色编码必须是字符串" })
 	@MaxLength(100, { message: "角色编码不能超过 100 个字符" })
 	roleCode?: string;
-
-	@ApiPropertyOptional({ description: "数据范围策略", enum: DataScope })
-	@IsOptional()
-	@IsEnum(DataScope, { message: "数据范围不是有效的枚举值" })
-	dataScope?: DataScope;
 
 	@ApiPropertyOptional({ description: "状态，0 停用，1 启用", enum: [0, 1] })
 	@IsOptional()

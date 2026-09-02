@@ -72,7 +72,7 @@ export class DepartmentService {
 		return entity;
 	}
 
-	/** 按主键取未删除部门；lockForWrite 只能在事务内使用。 */
+	/** 按主键取未删除部门；不存在时返回 404。 */
 	private async findDepartmentEntity(
 		em: EntityManager,
 		id: number,
@@ -142,7 +142,7 @@ export class DepartmentService {
 
 	// 部门方法
 
-	/** 创建部门；父部门存在时锁定父行后计算祖级列表。 */
+	/** 创建部门；父部门为空时创建根部门。 */
 	async createDepartment(dto: CreateDepartmentDto): Promise<DepartmentResult> {
 		return this.em.transactional(async (em) => {
 			const parent = await this.findParentEntity(em, dto.parentId, true);
@@ -188,9 +188,11 @@ export class DepartmentService {
 		};
 	}
 
-	/** 按主键查询未删除部门，不存在则 404。 */
+	/** 按主键查询未删除部门，不存在则返回 404。 */
 	async findDepartment(id: number): Promise<DepartmentResult> {
-		return this.toDepartmentResult(await this.findDepartmentEntity(this.em, id));
+		return this.toDepartmentResult(
+			await this.findDepartmentEntity(this.em, id),
+		);
 	}
 
 	/** 更新部门；移动节点时同步更新该节点及所有有效后代的祖级列表。 */

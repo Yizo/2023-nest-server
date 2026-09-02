@@ -1,8 +1,7 @@
 import { Type } from "class-transformer";
 import {
-	IsIn,
 	IsArray,
-	IsEnum,
+	IsIn,
 	IsInt,
 	IsOptional,
 	IsString,
@@ -12,7 +11,6 @@ import {
 	Min,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { DataScope } from "../role.constants";
 
 export class CreateRoleDto {
 	@ApiProperty({ description: "角色名称", example: "审计员", maxLength: 100 })
@@ -25,11 +23,6 @@ export class CreateRoleDto {
 	@Length(1, 100, { message: "角色编码长度必须在 1 到 100 个字符之间" })
 	@Matches(/^[A-Za-z0-9_]+$/, { message: "角色编码只能包含字母、数字和下划线" })
 	roleCode!: string;
-
-	@ApiPropertyOptional({ description: "数据范围策略", enum: DataScope, default: DataScope.ALL })
-	@IsOptional()
-	@IsEnum(DataScope, { message: "数据范围不是有效的枚举值" })
-	dataScope?: DataScope;
 
 	@ApiPropertyOptional({ description: "状态，0 停用，1 启用", enum: [0, 1], default: 1 })
 	@IsOptional()

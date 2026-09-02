@@ -11,6 +11,7 @@ import {
 	getOffsetPagination,
 	type PageResult,
 } from "@/common/pagination";
+import { AccessInvalidation } from "@/modules/access/access-invalidation.service";
 import { CreateMenuDto, MenuResult, QueryMenuDto, UpdateMenuDto } from "./dto";
 import { MenuType } from "./menu.constants";
 import { MenuEntity } from "./entities";
@@ -23,16 +24,17 @@ export class MenuService {
 		private readonly em: EntityManager,
 		private readonly data: MenuDataService,
 		private readonly roleMenus: RoleMenuDataService,
+		private readonly accessInvalidation: AccessInvalidation,
 	) {}
 
 	// 菜单方法
 
 	/** 创建菜单前检查不同类型允许使用哪些字段。 */
 	private assertCreateFields(dto: CreateMenuDto): void {
-		if (dto.type === MenuType.MENU) {
-			if (!this.isNonEmptyString(dto.path)) throw new BadRequestException("菜单类型必须填写路由路径");
+		if (dto.type === MenuType.PAGE) {
+			if (!this.isNonEmptyString(dto.path)) throw new BadRequestException("页面类型必须填写路由路径");
 			if (!this.isNonEmptyString(dto.component)) {
-				throw new BadRequestException("菜单类型必须填写页面组件");
+				throw new BadRequestException("页面类型必须填写页面组件");
 			}
 			if (dto.keepAlive !== undefined && typeof dto.keepAlive !== "boolean") {
 				throw new BadRequestException("是否缓存页面必须是布尔值");
@@ -40,9 +42,18 @@ export class MenuService {
 			return;
 		}
 
-		if (dto.type === MenuType.DIRECTORY) {
-			if (dto.component !== undefined) throw new BadRequestException("目录类型不能填写页面组件");
-			if (dto.keepAlive !== undefined) throw new BadRequestException("目录类型不能填写页面缓存配置");
+		if (dto.type === MenuType.MENU) {
+			if (dto.component !== undefined) throw new BadRequestException("菜单类型不能填写页面组件");
+			if (dto.keepAlive !== undefined) throw new BadRequestException("菜单类型不能填写页面缓存配置");
+			return;
+		}
+
+		if (dto.type === MenuType.EXTERNAL) {
+			if (!this.isNonEmptyString(dto.path)) throw new BadRequestException("外链类型必须填写外链地址");
+			if (dto.routeName !== undefined) throw new BadRequestException("外链类型不能填写路由名称");
+			if (dto.component !== undefined) throw new BadRequestException("外链类型不能填写页面组件");
+			if (dto.redirect !== undefined) throw new BadRequestException("外链类型不能填写重定向地址");
+			if (dto.keepAlive !== undefined) throw new BadRequestException("外链类型不能填写页面缓存配置");
 			return;
 		}
 
@@ -67,22 +78,38 @@ export class MenuService {
 		if (dto.visible !== undefined && typeof dto.visible !== "boolean") {
 			throw new BadRequestException("是否显示必须是布尔值");
 		}
-		if (dto.keepAlive !== undefined && type !== MenuType.MENU) {
+		if (dto.keepAlive !== undefined && type !== MenuType.PAGE) {
 			throw new BadRequestException("当前菜单类型不能填写页面缓存配置");
 		}
 
-		if (type === MenuType.MENU) {
+		if (type === MenuType.PAGE) {
 			if (dto.path !== undefined && !this.isNonEmptyString(dto.path)) {
-				throw new BadRequestException("菜单类型的路由路径不能为空");
+				throw new BadRequestException("页面类型的路由路径不能为空");
 			}
 			if (dto.component !== undefined && !this.isNonEmptyString(dto.component)) {
-				throw new BadRequestException("菜单类型的页面组件不能为空");
+				throw new BadRequestException("页面类型的页面组件不能为空");
 			}
 			return;
 		}
 
-		if (type === MenuType.DIRECTORY) {
-			if (dto.component !== undefined) throw new BadRequestException("目录类型不能填写页面组件");
+		if (type === MenuType.MENU) {
+			if (dto.component !== undefined) throw new BadRequestException("菜单类型不能填写页面组件");
+			if (dto.keepAlive !== undefined) throw new BadRequestException("菜单类型不能填写页面缓存配置");
+			return;
+		}
+
+		if (type === MenuType.EXTERNAL) {
+			if (dto.path !== undefined && !this.isNonEmptyString(dto.path)) {
+				throw new BadRequestException("外链类型的外链地址不能为空");
+			}
+			for (const [field, value] of [
+				["routeName", dto.routeName],
+				["component", dto.component],
+				["redirect", dto.redirect],
+				["keepAlive", dto.keepAlive],
+			] as const) {
+				if (value !== undefined) throw new BadRequestException(`外链类型不能填写${field}`);
+			}
 			return;
 		}
 
@@ -120,7 +147,7 @@ export class MenuService {
 		}
 	}
 
-	/** 新增菜单；目录和菜单可不传编码，操作类型必须传编码。 */
+	/** 新增菜单；页面、菜单和外链可不传编码，操作类型必须传编码。 */
 	async createMenu(dto: CreateMenuDto): Promise<MenuResult> {
 		this.assertCreateFields(dto);
 
@@ -142,7 +169,7 @@ export class MenuService {
 				icon: dto.icon ?? null,
 				sort: dto.sort ?? 0,
 				visible: dto.visible ?? true,
-				keepAlive: dto.type === MenuType.MENU ? (dto.keepAlive ?? false) : null,
+				keepAlive: dto.type === MenuType.PAGE ? (dto.keepAlive ?? false) : null,
 			});
 			try {
 				await em.flush();
@@ -221,7 +248,7 @@ export class MenuService {
 
 	/** 更新菜单字段；菜单类型创建后不允许改变。 */
 	async updateMenu(id: number, dto: UpdateMenuDto): Promise<MenuResult> {
-		return this.em.transactional(async (em) => {
+		const result = await this.em.transactional(async (em) => {
 			const entity = await this.data.findMenuEntity(em, id, true);
 			this.assertUpdateFields(entity.type, dto);
 
@@ -259,11 +286,13 @@ export class MenuService {
 			}
 			return this.data.toMenuResult(entity);
 		});
+		await this.accessInvalidation.invalidateMenu(id);
+		return result;
 	}
 
 	/** 软删除菜单；存在有效子菜单时不能删除。 */
 	async removeMenu(id: number): Promise<MenuResult> {
-		return this.em.transactional(async (em) => {
+		const result = await this.em.transactional(async (em) => {
 			const entity = await this.data.findMenuEntity(em, id, true);
 			if (await this.data.hasActiveChildren(em, entity.id)) {
 				throw new ConflictException("存在有效子菜单，不能删除当前菜单");
@@ -276,5 +305,7 @@ export class MenuService {
 			await em.flush();
 			return this.data.toMenuResult(entity);
 		});
+		await this.accessInvalidation.invalidateMenu(id);
+		return result;
 	}
 }

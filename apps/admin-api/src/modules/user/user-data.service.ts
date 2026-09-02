@@ -14,6 +14,8 @@ type UserView = Pick<
 	"id" | "userName" | "displayName" | "status" | "createdAt" | "updatedAt"
 >;
 type UserWriteEntity = UserView & Pick<UserEntity, "deletedAt"> & Partial<Pick<UserEntity, "passwordHash">>;
+type UserLoginEntity = Pick<UserEntity, "id" | "userName" | "passwordHash" | "status" | "deletedAt">;
+type ActiveUserEntity = Pick<UserEntity, "id" | "userName" | "status">;
 
 @Injectable()
 export class UserDataService {
@@ -38,6 +40,25 @@ export class UserDataService {
 		if (typeof password !== "string") throw new BadRequestException("密码必须是字符串");
 		return bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 	}
+
+	/** 按账号查询登录所需字段，密码哈希只在登录流程中显式加载。 */
+	async findUserForLogin(em: EntityManager, userName: string): Promise<UserLoginEntity | null> {
+		return em.findOne(
+			UserEntity,
+			{ userName, deletedAt: null },
+			{ fields: ["id", "userName", "passwordHash", "status", "deletedAt"] },
+		);
+	}
+
+	/** 按主键查询启用且未删除的用户，供认证和权限校验使用。 */
+	async findActiveUser(em: EntityManager, id: number): Promise<ActiveUserEntity | null> {
+		return em.findOne(
+			UserEntity,
+			{ id, deletedAt: null, status: 1 },
+			{ fields: ["id", "userName", "status"] },
+		);
+	}
+
 
 	/** 用户账号统一去掉首尾空白并转小写，避免大小写不同却创建重复账号。 */
 	normalizeUserName(userName: string): string {
@@ -65,6 +86,7 @@ export class UserDataService {
 					"departments.id",
 				],
 				populate: ["roles:ref", "departments:ref"],
+				populateWhere: { deletedAt: null },
 				strategy: LoadStrategy.SELECT_IN,
 				refresh: true,
 			},

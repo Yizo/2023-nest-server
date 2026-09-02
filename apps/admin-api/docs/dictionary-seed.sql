@@ -2,7 +2,7 @@
 --
 -- 图片明确提供了字典类型编码和展示标签，但没有提供每个字典项的 value。
 -- 本文件采用以下稳定字符串作为 value：
--- permission_type: directory / menu / button / api
+-- permission_type: page / menu / external / action
 -- 如果业务代码使用数值编码，请在执行前替换对应 value。
 -- 本脚本只补充缺失的有效记录，不覆盖已有记录。
 
@@ -23,10 +23,10 @@ ON CONFLICT DO NOTHING;
 
 WITH seed ("dict_type", "label", "value", "sort") AS (
 	VALUES
-		('permission_type', '目录', 'directory', 0),
+		('permission_type', '页面', 'page', 0),
 		('permission_type', '菜单', 'menu', 1),
-		('permission_type', '按钮', 'button', 2),
-		('permission_type', '接口', 'api', 3)
+		('permission_type', '外链', 'external', 2),
+		('permission_type', '操作', 'action', 3)
 )
 INSERT INTO "sys_dict_data" (
 	"created_at",

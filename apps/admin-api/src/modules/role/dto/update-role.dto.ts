@@ -2,5 +2,5 @@ import { PartialType, PickType } from "@nestjs/swagger";
 import { CreateRoleDto } from "./create-role.dto";
 
 export class UpdateRoleDto extends PartialType(
-	PickType(CreateRoleDto, ["roleName", "dataScope", "status", "remark", "menuIds"] as const),
+	PickType(CreateRoleDto, ["roleName", "status", "remark", "menuIds"] as const),
 ) {}
