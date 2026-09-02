@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { AdminApiConfig } from "@/config";
-import type { MenuAccessNode } from "@/common/types";
+import type { MenuAccessNode } from "./access.types";
 import { RedisService } from "@/infrastructure/redis/redis.service";
 
 const PERMISSION_CACHE_PREFIX = "auth:permissions";

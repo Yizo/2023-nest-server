@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from "@nestjs/common";
 import { EntityManager } from "@mikro-orm/postgresql";
-import type { MenuAccessNode } from "@/common/types";
+import type { MenuAccessNode } from "./access.types";
 import { PermissionCacheService } from "./permission-cache.service";
 import { MenuType } from "@/modules/menu/menu.constants";
 import { SUPER_ADMIN_ROLE_CODE } from "@/modules/role/role.constants";

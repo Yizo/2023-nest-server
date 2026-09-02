@@ -18,17 +18,18 @@ apps/admin-api/
 │   ├── app.controller.ts     # 不包含业务的最小应用信息接口
 │   ├── config/               # dotenv-flow 加载环境文件并组装嵌套配置
 │   ├── common/               # 跨业务复用的过滤器、拦截器、管道、中间件和守卫
-│   ├── database/
-│   │   ├── database.module.ts # 创建和关闭 MikroORM PostgreSQL 实例
-│   │   ├── mikro-orm.config.ts# 显式 ORM 连接配置，不管理 schema
-│   │   ├── mikro-orm-request-context.middleware.ts # 每个请求独立的 EntityManager 上下文
-│   │   └── index.ts            # 数据库基础设施导出
 │   ├── infrastructure/
-│   │   └── redis/
-│   │       ├── redis.module.ts   # Redis 客户端 Provider 和模块导出
-│   │       ├── redis.service.ts  # PING、连接错误和优雅关闭
-│   │       └── redis.constants.ts# Redis 注入令牌
-│   └── health/                # live/ready 健康检查
+│   │   ├── database/
+│   │   │   ├── database.module.ts # 创建和关闭 MikroORM PostgreSQL 实例
+│   │   │   ├── mikro-orm.config.ts# 显式 ORM 连接配置，不管理 schema
+│   │   │   └── index.ts            # 数据库基础设施导出
+│   │   └── redis/                 # 只保留连接，不认识权限 key 或菜单结构
+│   │       ├── redis.module.ts    # Redis 客户端 Provider 和模块导出
+│   │       ├── redis.service.ts   # PING、连接错误和优雅关闭
+│   │       └── redis.constants.ts # Redis 注入令牌
+│   └── modules/
+│       ├── access/                # 权限读模型、失效端口、PermissionGuard、GET /auth/access
+│       └── health/                # live/ready 健康检查
 ├── scripts/
 │   ├── ssh-tunnel.sh            # 从 .env 读取配置并以前台方式建立 SSH 隧道
 │   └── start-dev.sh             # 启动 Nest watch 并在退出时清理整个 Node 进程树
@@ -46,6 +47,8 @@ MikroOrmRequestContextMiddleware
         ↓
 AuthGuard
         ↓
+PermissionGuard
+        ↓
 RequestLoggingInterceptor
         ↓
 ValidationPipe
@@ -60,7 +63,9 @@ HttpExceptionFilter
 ## 后续增加业务模块的规则
 
 1. 业务模块放在 `src/modules/<module-name>`，不要直接堆到 `AppModule`。
-2. 实体放在业务模块或 `src/database/entities`，新增实体时先确认数据库结构管理方式。
+2. 实体放在业务模块内，新增实体时先确认数据库结构管理方式。
 3. Controller 只处理 HTTP 输入输出，数据库读写放到 Service 或 Query 类。
 4. 不恢复仓库根目录的通用 Query Builder。
-5. 业务路由使用 `@AuthRequired()` 或 `@RequirePermissions()`，公开路由必须显式使用 `@Public()`。
+5. 业务路由使用 `@AuthRequired()` 或 `@RequirePermissions()`，公开路由必须显式使用 `@Public()`。未标注路由默认拒绝。
+6. 跨模块只走导出端口，禁止注入他模块的 `*DataService`。
+7. 写侧不自己查失效用户，只调用 `AccessInvalidation.invalidateUser/Role/Menu`。
