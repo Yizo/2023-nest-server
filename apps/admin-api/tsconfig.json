@@ -24,6 +24,6 @@
     "skipLibCheck": true,
 		"types": ["node"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

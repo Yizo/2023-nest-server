@@ -19,7 +19,8 @@
 		"db:migration:check": "pnpm --dir apps/admin-api db:migration:check",
 		"db:migration:up": "pnpm --dir apps/admin-api db:migration:up",
 		"db:migration:up:prod": "pnpm --dir apps/admin-api db:migration:up:prod",
-		"typecheck": "pnpm --dir apps/admin-api typecheck"
+		"typecheck": "pnpm --dir apps/admin-api typecheck",
+		"test": "pnpm --dir apps/admin-api test"
 	},
 	"devDependencies": {
 		"@nestjs/cli": "11.0.24",
