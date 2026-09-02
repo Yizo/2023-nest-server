@@ -14,7 +14,7 @@ import { EntityManager } from "@mikro-orm/postgresql";
 import { getOffsetPagination, type PageResult } from "@/common/pagination";
 import { getIdDiff, normalizeIds } from "@/common/utils";
 import { AccessInvalidation } from "@/modules/access/access-invalidation.service";
-import { RoleMenuDataService } from "@/modules/menu/role-menu-data.service";
+import { RoleMenuDataService } from "./role-menu-data.service";
 import { UserDataService } from "@/modules/user/user-data.service";
 import { CreateRoleDto, QueryRoleDto, RoleResult, UpdateRoleDto } from "./dto";
 import { RoleEntity } from "./entities";

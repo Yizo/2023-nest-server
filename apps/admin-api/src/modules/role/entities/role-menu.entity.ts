@@ -1,6 +1,6 @@
 import { defineEntity, p } from "@mikro-orm/core";
-import { RoleEntity } from "@/modules/role/entities/role.entity";
-import { MenuEntity } from "./menu.entity";
+import { MenuEntity } from "@/modules/menu/entities/menu.entity";
+import { RoleEntity } from "./role.entity";
 
 const RoleMenuSchema = defineEntity({
 	name: "RoleMenuEntity",

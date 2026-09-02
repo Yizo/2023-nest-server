@@ -12,18 +12,18 @@ import {
 	type PageResult,
 } from "@/common/pagination";
 import { AccessInvalidation } from "@/modules/access/access-invalidation.service";
+import { RoleGrantCommand } from "@/modules/role/role-grant.command";
 import { CreateMenuDto, MenuResult, QueryMenuDto, UpdateMenuDto } from "./dto";
 import { MenuType } from "./menu.constants";
 import { MenuEntity } from "./entities";
 import { MenuDataService } from "./menu-data.service";
-import { RoleMenuDataService } from "./role-menu-data.service";
 
 @Injectable()
 export class MenuService {
 	constructor(
 		private readonly em: EntityManager,
 		private readonly data: MenuDataService,
-		private readonly roleMenus: RoleMenuDataService,
+		private readonly roleGrants: RoleGrantCommand,
 		private readonly accessInvalidation: AccessInvalidation,
 	) {}
 
@@ -300,7 +300,7 @@ export class MenuService {
 				throw new ConflictException("存在有效子菜单，不能删除当前菜单");
 			}
 			await this.accessInvalidation.invalidateMenu(entity.id);
-			await this.roleMenus.clearMenuRoles(em, entity.id);
+			await this.roleGrants.clearGrantsByMenu(em, entity.id);
 
 			const now = new Date();
 			entity.deletedAt = now;

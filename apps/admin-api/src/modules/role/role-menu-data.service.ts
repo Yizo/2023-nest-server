@@ -2,8 +2,8 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { LockMode } from "@mikro-orm/core";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { normalizeIds } from "@/common/utils";
-import { RoleEntity } from "@/modules/role/entities/role.entity";
-import { MenuEntity } from "./entities/menu.entity";
+import { MenuEntity } from "@/modules/menu/entities/menu.entity";
+import { RoleEntity } from "./entities/role.entity";
 import { RoleMenuEntity } from "./entities/role-menu.entity";
 
 /** 负责 sys_role_menu 关联表的数据读写 */
@@ -37,16 +37,6 @@ export class RoleMenuDataService {
 			{ fields: ["menu.id"] },
 		);
 		return relations.map((relation) => relation.menu.id);
-	}
-
-	/** 查询拥有指定菜单的角色 ID，供菜单变化后清理权限缓存。 */
-	async findRoleIdsByMenu(em: EntityManager, menuId: number): Promise<number[]> {
-		const relations = await em.find(
-			RoleMenuEntity,
-			{ menu: em.getReference(MenuEntity, menuId) },
-			{ fields: ["role.id"] },
-		);
-		return relations.map((relation) => relation.role.id);
 	}
 
 	/**

@@ -1,7 +1,7 @@
 import { defineEntity, p } from "@mikro-orm/core";
 import { SoftDeleteEntitySchema } from "@/common/entities/base.entity";
 import { MenuEntity } from "@/modules/menu/entities/menu.entity";
-import { RoleMenuEntity } from "@/modules/menu/entities/role-menu.entity";
+import { RoleMenuEntity } from "./role-menu.entity";
 
 const RoleSchema = defineEntity({
 	name: "RoleEntity",
